@@ -1,4 +1,5 @@
 package fr.jrds;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -7,24 +8,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.KeyStore;
-import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -61,31 +59,65 @@ public class KeyStorePlay {
 
     public static void main(String[] args) {
 
-        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+        Security.insertProviderAt(new BouncyCastleProvider(), Security.getProviders().length + 1);
 
         System.out.println("*************");
         System.out.println("Checking export policy");
         System.out.println("is restricted: " + KeyStorePlay.isRestricted());
 
         System.out.println("*************");
-        System.out.println("Checking sslparameters");
+        System.out.println("checking default trust store");
+        // Oracle official order for default trust store
+        checkKeyStore(System.getProperty("javax.net.ssl.trustStore"));
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "jssecacerts");
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts");
         try {
-            SSLParameters params = SSLContext.getDefault().getSupportedSSLParameters();
-            System.out.println("cipher suites: " + Arrays.toString(params.getCipherSuites()));
-            System.out.println("protocols: " + Arrays.toString(params.getProtocols()));
+            KeyStore appleKeyStore = KeyStore.getInstance("KeychainStore");
+            appleKeyStore.load(null, "".toCharArray());
+            System.out.println("KeychainStore");
+            printKeyStoreInfo(appleKeyStore);
+        } catch (KeyStoreException e) {
         } catch (NoSuchAlgorithmException e) {
             System.out.println("Missing algorithm:" + e.getMessage());
+        } catch (CertificateException e) {
+            System.out.println("Invalid certificate:" + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Unable to laod Apple Keychain: " + e.getMessage());
         }
-        System.out.println("*************");
-        System.out.println("checking default cacerts");
+        enumerateProviders();
+        enumerateServices();
+        checkSSLContext();
+        if(args.length > 0) {
+            System.out.println("*************");
+            System.out.println("Dumping some keystore");     
+            for(String storeFile: args) {
+                String storeType = null;
+                if(storeFile.endsWith("p12")) {
+                    storeType = "PKCS12";
+                } else if(storeFile.endsWith("jks")) {
+                    storeType = "JKS";
+                } else if(storeFile.endsWith("ks")) {
+                    storeType = "JKS";
+                }
+                if(storeType != null) {
+                    checkStore(storeFile, storeType);
+                }
+            }
+        }
+
+    }
+
+    private static void checkKeyStore(String file) {
+        if(file == null){
+            return;
+        }
         String cacertPath = "";
         try {
             KeyStore prodks = KeyStore.getInstance(KeyStore.getDefaultType());
-            cacertPath = new File(System.getProperty("java.home")).getCanonicalPath() + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts";
+            cacertPath = new File(file).getCanonicalPath();
             prodks.load(new FileInputStream(cacertPath), null);
-            System.out.println("type: " + prodks.getType());
-            System.out.println("provider: " + prodks.getProvider().getName());
-            System.out.println("count: " + prodks.size());
+            System.out.println(cacertPath);
+            printKeyStoreInfo(prodks);
         } catch (KeyStoreException e) {
             System.out.println("invalid keystore:" + e.getMessage());
         } catch (NoSuchAlgorithmException e) {
@@ -93,45 +125,53 @@ public class KeyStorePlay {
         } catch (CertificateException e) {
             System.out.println("Invalid certificate:" + e.getMessage());
         } catch (FileNotFoundException e) {
-            System.out.println("Missing cacerts file " + cacertPath + ":" + e.getMessage());
         } catch (IOException e) {
             System.out.println("Unsuable cacerts file " + cacertPath + ":" + e.getMessage());
         }
+    }
 
-        checkStoreypes();
-        enumerateProviders();
-        enumerateServices();
-        if(args.length > 0) {
-            System.out.println("*************");
-            System.out.println("Dumping some keystore");     
-        }
-        for(String storeFile: args) {
-            String storeType = null;
-            if(storeFile.endsWith("p12")) {
-                storeType = "PKCS12";
-            } else if(storeFile.endsWith("jks")) {
-                storeType = "JKS";
-            } else if(storeFile.endsWith("ks")) {
-                storeType = "JKS";
-            }
-            if(storeType != null) {
-                checkStore(storeFile, storeType);
-            }
-        }
+    private static void printKeyStoreInfo(KeyStore ks) throws KeyStoreException {
+        System.out.println("  type: " + ks.getType());
+        System.out.println("  provider: " + ks.getProvider().getName());
+        System.out.println("  count: " + ks.size());        
+    }
 
+    private static void checkSSLContext() {
+        System.out.println("*************");
+        System.out.println("Checking sslparameters");
+        try {
+            SSLParameters params = SSLContext.getDefault().getSupportedSSLParameters();
+            System.out.println("Supported:");
+            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
+            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+            System.out.println("Defaults:");
+            params = SSLContext.getDefault().getDefaultSSLParameters();
+            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
+            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("Missing algorithm:" + e.getMessage());
+        }        
     }
 
     private static void enumerateProviders() {
         System.out.println("*************");
         System.out.println("Providers enumeration");
-        for(Provider p: Security.getProviders()) {
-            Map<String, Set<String>> services = new HashMap<String, Set<String>>();
+        Set<Provider> providers = new TreeSet<Provider>(new Comparator<Provider>(){
+            @Override
+            public int compare(Provider arg0, Provider arg1) {
+                return arg0.getName().compareTo(arg1.getName());
+            }
+        });
+        providers.addAll(Arrays.asList(Security.getProviders()));
+        for(Provider p: providers) {
+            Map<String, Set<String>> services = new TreeMap<String, Set<String>>();
             System.out.println("**** " + p.getName());
             System.out.println("    " + p.getInfo());
-            System.out.println("    " + p.getClass().getName() + "@" + locateJar(p.getClass()));
+            System.out.println("    location: " + p.getClass().getName() + "@" + locateJar(p.getClass()));
+            System.out.println();
             for(Provider.Service s: p.getServices()) {
                 if (! services.containsKey(s.getType())) {
-                    services.put(s.getType(), new HashSet<String>());
+                    services.put(s.getType(), new TreeSet<String>());
                 }
                 services.get(s.getType()).add(s.getAlgorithm());
             }
@@ -180,35 +220,6 @@ public class KeyStorePlay {
         }
     }    
 
-    private static Set<String> getKeyStores() {
-        Set<String> keyStores = new LinkedHashSet<String>();
-        for(Provider p: Security.getProviders()) {
-            for(Provider.Service s: p.getServices()) {
-                if(s.getType() == "KeyStore")
-                    keyStores.add(s.getAlgorithm());
-            }
-        }
-        return keyStores;
-    }
-
-    private static void checkStoreypes() {
-        System.out.println("*************");
-        System.out.println("Trying keystore types");
-        for(String ksName: getKeyStores()) {
-            System.out.println("**** " + ksName);
-            try {
-                KeyStore ks = KeyStore.getInstance(ksName);
-                ks.load(null, "".toCharArray());
-                System.out.println("    provider: " + ks.getProvider().getName());
-                System.out.println("    count: " + ks.size());
-            }
-            catch(Exception e) {
-                System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
-            }
-        }
-
-    }
-
     private static void checkStore(String f, String storeType) {
         try {
             KeyStore ks = KeyStore.getInstance(storeType);
@@ -222,42 +233,6 @@ public class KeyStorePlay {
         } catch (Exception e) {
             System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
         }
-    }
-
-    private static void dumpLoaded(KeyStore ks) throws KeyStoreException {
-        System.out.println("type: " + ks.getType());
-        System.out.println("provider: " + ks.getProvider().getName());
-        System.out.println("count: " + ks.size());
-        List<String> aliases = Collections.list(ks.aliases());
-        for(String alias: aliases) {
-            try {
-                if (ks.entryInstanceOf(alias, KeyStore.TrustedCertificateEntry.class)) {
-                    System.out.println("certificate '" + alias + "'");
-                    TrustedCertificateEntry entry = (TrustedCertificateEntry) ks.getEntry(alias, null);
-                    System.out.println("    " + entry);
-                }
-                else if (ks.entryInstanceOf(alias, KeyStore.PrivateKeyEntry.class)) {
-                    System.out.println("private key '" + alias + "'");                    
-                    //KeyStore.PrivateKeyEntry entry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, null);
-                    KeyStore.PrivateKeyEntry entry = (KeyStore.PrivateKeyEntry) ks.getEntry(alias, new KeyStore.PasswordProtection("qonrI8mB".toCharArray()));
-                    System.out.println("    " + entry.getPrivateKey());
-                    for(Certificate c: ks.getCertificateChain(alias)) {
-                        System.out.println(c);                        
-                    }
-                }
-                else if (ks.entryInstanceOf(alias, KeyStore.SecretKeyEntry.class)) {
-                    System.out.println("secret key '" + alias + "'");                    
-                    KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) ks.getEntry(alias, new KeyStore.PasswordProtection("".toCharArray()));
-                    System.out.println("    " + entry.getSecretKey().getFormat());
-                }
-                else {
-                    System.out.println("Unknown alias type: '" + alias + "'");
-                }
-            } catch (Exception e) {
-                System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
-            }
-        }
-
     }
 
 }
