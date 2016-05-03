@@ -1,5 +1,6 @@
 package fr.jrds;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
@@ -27,7 +29,6 @@ import java.util.TreeSet;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class KeyStorePlay {
 
@@ -58,8 +59,33 @@ public class KeyStorePlay {
     }
 
     public static void main(String[] args) {
+        System.out.println("*************");
+        System.out.println("Register security provider declared as services");
+        ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
+        for(Provider i: sl) {
+            System.out.println("    register " + i);
+            Security.insertProviderAt(i, Security.getProviders().length + 1);
+        }
 
-        Security.insertProviderAt(new BouncyCastleProvider(), Security.getProviders().length + 1);
+        try {
+            Security.insertProviderAt((Provider) Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider").newInstance(), Security.getProviders().length + 1);
+            Security.insertProviderAt((Provider)Class.forName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider").newInstance(), Security.getProviders().length + 1);
+        } catch (Exception e) {
+            System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
+        }
+
+        try {
+            StringBuilder buffer = new StringBuilder();
+            buffer.append("name=NSS\n");
+            buffer.append("nssDbMode=noDb\n");
+
+            @SuppressWarnings("restriction")
+            Provider p = new sun.security.pkcs11.SunPKCS11(new ByteArrayInputStream(buffer.toString().getBytes()));
+            Security.insertProviderAt(p, Security.getProviders().length + 1);
+        } catch (Exception e) {
+            System.out.println("Failed to add nss PKCS11 provider: " + e.getMessage());
+        }
+
 
         System.out.println("*************");
         System.out.println("Checking export policy");
@@ -146,6 +172,7 @@ public class KeyStorePlay {
             System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
             System.out.println("Defaults:");
             params = SSLContext.getDefault().getDefaultSSLParameters();
+            System.out.println("  providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
             System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
             System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
         } catch (NoSuchAlgorithmException e) {

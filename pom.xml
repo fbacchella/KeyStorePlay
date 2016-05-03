@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <buildSource>1.6</buildSource>
         <buildTarget>1.6</buildTarget>
-        <bouncycastle>1.53</bouncycastle>
+        <bouncycastle>1.54</bouncycastle>
         <mainClass>fr.jrds.KeyStorePlay</mainClass>
     </properties>
 
@@ -28,6 +28,11 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-ext-jdk15on</artifactId>
             <version>${bouncycastle}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.sasl</groupId>
+            <artifactId>jboss-sasl</artifactId>
+            <version>1.0.5.Final</version>
         </dependency>
     </dependencies>
     <build>
