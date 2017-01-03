@@ -5,12 +5,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.security.AccessController;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Permission;
 import java.security.Provider;
 import java.security.Security;
 import java.security.cert.CertificateException;
@@ -18,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -28,6 +33,9 @@ import java.util.TreeSet;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 
 public class KeyStorePlay {
@@ -55,16 +63,83 @@ public class KeyStorePlay {
             } catch (InvocationTargetException e) {
             }
         }
+
         return false;
     }
 
     public static void main(String[] args) {
+
+        Map<String, List<String>> settings = new HashMap<>();
+        if (args.length > 0) {
+            List<String> argsList = Arrays.asList(args);
+            Iterator<String> i = argsList.iterator();
+            while (i.hasNext()) {
+                String arg = i.next();
+                if ("-dump".equals(arg)) {
+                    dump();
+                }
+                else if ("-connect".equals(arg)) {
+                    if (i.hasNext()) {
+                        connect(i.next());
+                    }
+                }
+                else if ("-keystore".equals(arg)) {
+                    if (i.hasNext()) {
+                        dumpKeyStore(i.next());
+                    }
+                }
+            }
+        }
+    }
+
+    public static void dumpKeyStore(String storeFile) {
+        System.out.println("*************");
+        System.out.println("Dumping keystore " + storeFile);
+        String storeType = null;
+        if (storeFile.endsWith("p12")) {
+            storeType = "PKCS12";
+        } else if (storeFile.endsWith("jks")) {
+            storeType = "JKS";
+        } else if (storeFile.endsWith("ks")) {
+            storeType = "JKS";
+        }
+        if (storeType != null) {
+            checkStore(storeFile, storeType);
+        }
+    }
+    
+    public static void connect(String cnxString) {
+        System.out.println("*************");
+        System.out.println("Connecting to " + cnxString);
+        try {
+            String[] cnxInfoString = cnxString.split(":");
+            if (cnxInfoString.length != 2) {
+                return;
+            }
+            String host = cnxInfoString[0];
+            int port = Integer.parseInt(cnxInfoString[1]);
+            SSLSocketFactory factory =  (SSLSocketFactory) SSLSocketFactory.getDefault();
+            try (SSLSocket socket =  (SSLSocket) factory.createSocket(host, port)) {
+                SSLSession session = socket.getSession();
+                System.out.printf("connect to %s as '%s', using %s\n", cnxString, session.getPeerPrincipal(), session.getCipherSuite());
+            }
+        } catch (NumberFormatException | IOException e) {
+            System.out.println("connection failed: " +  e.getMessage());
+        }
+    }
+
+    public static void dump() {
+
         System.out.println("*************");
         System.out.println("Register security provider declared as services");
         ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
         for(Provider i: sl) {
             System.out.println("    register " + i);
-            Security.insertProviderAt(i, Security.getProviders().length + 1);
+            try {
+                Security.insertProviderAt(i, Security.getProviders().length + 1);
+            } catch (Exception e) {
+                System.out.println("Failed to add " + i.getName() + " providers as a service: " + e.getMessage());
+            }
         }
 
         try {
@@ -94,9 +169,9 @@ public class KeyStorePlay {
         System.out.println("*************");
         System.out.println("checking default trust store");
         // Oracle official order for default trust store
-        checkKeyStore(System.getProperty("javax.net.ssl.trustStore"));
-        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "jssecacerts");
-        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts");
+        checkKeyStore(System.getProperty("javax.net.ssl.trustStore"), System.getProperty("javax.net.ssl.trustStoreType", KeyStore.getDefaultType()));
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "jssecacerts", "jks");
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts", "jks");
         try {
             KeyStore appleKeyStore = KeyStore.getInstance("KeychainStore");
             appleKeyStore.load(null, "".toCharArray());
@@ -108,38 +183,61 @@ public class KeyStorePlay {
         } catch (CertificateException e) {
             System.out.println("Invalid certificate:" + e.getMessage());
         } catch (IOException e) {
-            System.out.println("Unable to laod Apple Keychain: " + e.getMessage());
+            System.out.println("Unable to load Apple Keychain: " + e.getMessage());
         }
         enumerateProviders();
         enumerateServices();
         checkSSLContext();
-        if(args.length > 0) {
-            System.out.println("*************");
-            System.out.println("Dumping some keystore");     
-            for(String storeFile: args) {
-                String storeType = null;
-                if(storeFile.endsWith("p12")) {
-                    storeType = "PKCS12";
-                } else if(storeFile.endsWith("jks")) {
-                    storeType = "JKS";
-                } else if(storeFile.endsWith("ks")) {
-                    storeType = "JKS";
-                }
-                if(storeType != null) {
-                    checkStore(storeFile, storeType);
-                }
+        for (String prop: new String[] {"java.security",
+                "cert.provider.x509v", 
+                "java.protocol.handler.pkgs",
+                "ssl.SocketFactory.provider",
+                "javax.net.ssl.keyStore",
+                "javax.net.ssl.keyStorePassword",
+                "javax.net.ssl.keyStoreProvider",
+                "javax.net.ssl.keyStoreType",
+                "javax.net.ssl.trustStore",
+                "javax.net.ssl.trustStoreType",
+                "ssl.KeyManagerFactory.algorithm",
+                "ssl.TrustManagerFactory.algorithm",
+                "jdk.tls.disabledAlgorithms", 
+                "jdk.certpath.disabledAlgorithms",
+                "jsse.enableSNIExtension",
+                "https.cipherSuites",
+                "sun.security.ssl.allowLegacyHelloMessages",
+        "jdk.tls.ephemeralDHKeySize"}) {
+            String value = java.security.Security.getProperty(prop);
+            if (value != null) {
+                System.out.format("%s=%s\n", prop, value);
             }
         }
 
+
     }
 
-    private static void checkKeyStore(String file) {
+    private static void checkStore(String f, String storeType) {
+        try {
+            KeyStore ks = KeyStore.getInstance(storeType);
+            System.out.println("*** " + f + " ***");
+            ks.load(new FileInputStream(f), "".toCharArray());
+            System.out.println("type: " + ks.getType());
+            System.out.println("provider: " + ks.getProvider().getName());
+            System.out.println("count: " + ks.size());
+            List<String> aliases = Collections.list(ks.aliases());
+            System.out.println(aliases);
+        } catch (Exception e) {
+            System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
+        }
+    }
+
+    private static void checkKeyStore(String file, String storeType) {
+        System.out.printf("%s %s\n", file, storeType);
         if(file == null){
             return;
         }
         String cacertPath = "";
         try {
-            KeyStore prodks = KeyStore.getInstance(KeyStore.getDefaultType());
+            KeyStore prodks = KeyStore.getInstance(storeType);
             cacertPath = new File(file).getCanonicalPath();
             prodks.load(new FileInputStream(cacertPath), null);
             System.out.println(cacertPath);
@@ -159,7 +257,7 @@ public class KeyStorePlay {
     private static void printKeyStoreInfo(KeyStore ks) throws KeyStoreException {
         System.out.println("  type: " + ks.getType());
         System.out.println("  provider: " + ks.getProvider().getName());
-        System.out.println("  count: " + ks.size());        
+        System.out.println("  count: " + ks.size());
     }
 
     private static void checkSSLContext() {
@@ -246,20 +344,5 @@ public class KeyStorePlay {
             }
         }
     }    
-
-    private static void checkStore(String f, String storeType) {
-        try {
-            KeyStore ks = KeyStore.getInstance(storeType);
-            System.out.println("*** " + f + " ***");
-            ks.load(new FileInputStream(f), "".toCharArray());
-            System.out.println("type: " + ks.getType());
-            System.out.println("provider: " + ks.getProvider().getName());
-            System.out.println("count: " + ks.size());
-            List<String> aliases = Collections.list(ks.aliases());
-            System.out.println(aliases);
-        } catch (Exception e) {
-            System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
-        }
-    }
 
 }
