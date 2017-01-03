@@ -10,5 +10,5 @@ The following information can be dumped with command line arguments:
  * -services: it dumps all available services.
  * -connect: it take a string host:port and try to do an ssl connection to this host, it dumps a few informations about the connections if it succeed.
  * -loadbc: it try to load BouncyCastle's providers.
- * -autoload: it try to load all providers declared as services
+ * -autoload: it try to load all providers declared as services (see http://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html)
  * -searchks: it searches for some default key stores.
