@@ -21,12 +21,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -69,14 +68,16 @@ public class KeyStorePlay {
 
     public static void main(String[] args) {
 
-        Map<String, List<String>> settings = new HashMap<>();
         if (args.length > 0) {
             List<String> argsList = Arrays.asList(args);
             Iterator<String> i = argsList.iterator();
             while (i.hasNext()) {
                 String arg = i.next();
-                if ("-dump".equals(arg)) {
-                    dump();
+                if ("-providers".equals(arg)) {
+                    enumerateProviders();
+                }
+                else if ("-services".equals(arg)) {
+                    enumerateServices();
                 }
                 else if ("-connect".equals(arg)) {
                     if (i.hasNext()) {
@@ -88,6 +89,107 @@ public class KeyStorePlay {
                         dumpKeyStore(i.next());
                     }
                 }
+                else if ("-defaultssl".equals(arg)) {
+                    defaultssl();
+                }
+                else if ("-loadbc".equals(arg)) {
+                    loadbouncycastle();
+                }
+                else if ("-autoload".equals(arg)) {
+                    loadservices();
+                }
+                else if ("-searchks".equals(arg)) {
+                    searchks();
+                }
+            }
+        }
+    }
+
+    private static void searchks() {
+        System.out.println("*************");
+        System.out.println("checking default trust store");
+        // Oracle official order for default trust store
+        checkKeyStore(System.getProperty("javax.net.ssl.trustStore"), System.getProperty("javax.net.ssl.trustStoreType", KeyStore.getDefaultType()));
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "jssecacerts", "jks");
+        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts", "jks");
+        try {
+            KeyStore appleKeyStore = KeyStore.getInstance("KeychainStore");
+            appleKeyStore.load(null, "".toCharArray());
+            System.out.println("KeychainStore");
+            printKeyStoreInfo(appleKeyStore);
+        } catch (KeyStoreException e) {
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("Missing algorithm:" + e.getMessage());
+        } catch (CertificateException e) {
+            System.out.println("Invalid certificate:" + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Unable to load Apple Keychain: " + e.getMessage());
+        }
+    }
+
+    private static void loadservices() {
+        System.out.println("*************");
+        System.out.println("Register security provider declared as services");
+        ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
+        for(Provider i: sl) {
+            System.out.println("    register " + i);
+            try {
+                Security.insertProviderAt(i, Security.getProviders().length + 1);
+            } catch (Exception e) {
+                System.out.println("Failed to add " + i.getName() + " providers as a service: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void loadbouncycastle() {
+        try {
+            Security.insertProviderAt((Provider) Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider").newInstance(), Security.getProviders().length + 1);
+            Security.insertProviderAt((Provider)Class.forName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider").newInstance(), Security.getProviders().length + 1);
+            System.out.println("Loaded BouncyCastle");
+        } catch (Exception e) {
+            System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
+        }
+    }
+
+    private static void defaultssl() {
+        System.out.println("*************");
+        System.out.println("Checking sslparameters");
+        try {
+            SSLParameters params = SSLContext.getDefault().getSupportedSSLParameters();
+            System.out.println("Supported:");
+            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
+            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+            System.out.println("Defaults:");
+            params = SSLContext.getDefault().getDefaultSSLParameters();
+            System.out.println("  providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
+            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
+            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("Missing algorithm:" + e.getMessage());
+        }
+        System.out.println("");
+        System.out.println("Current sssl and security properties");
+        for (String prop: new String[] {"java.security",
+                "cert.provider.x509v", 
+                "java.protocol.handler.pkgs",
+                "ssl.SocketFactory.provider",
+                "javax.net.ssl.keyStore",
+                "javax.net.ssl.keyStorePassword",
+                "javax.net.ssl.keyStoreProvider",
+                "javax.net.ssl.keyStoreType",
+                "javax.net.ssl.trustStore",
+                "javax.net.ssl.trustStoreType",
+                "ssl.KeyManagerFactory.algorithm",
+                "ssl.TrustManagerFactory.algorithm",
+                "jdk.tls.disabledAlgorithms", 
+                "jdk.certpath.disabledAlgorithms",
+                "jsse.enableSNIExtension",
+                "https.cipherSuites",
+                "sun.security.ssl.allowLegacyHelloMessages",
+                "jdk.tls.ephemeralDHKeySize"}) {
+            String value = java.security.Security.getProperty(prop);
+            if (value != null) {
+                System.out.format("%s=%s\n", prop, value);
             }
         }
     }
@@ -107,7 +209,7 @@ public class KeyStorePlay {
             checkStore(storeFile, storeType);
         }
     }
-    
+
     public static void connect(String cnxString) {
         System.out.println("*************");
         System.out.println("Connecting to " + cnxString);
@@ -128,26 +230,7 @@ public class KeyStorePlay {
         }
     }
 
-    public static void dump() {
-
-        System.out.println("*************");
-        System.out.println("Register security provider declared as services");
-        ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
-        for(Provider i: sl) {
-            System.out.println("    register " + i);
-            try {
-                Security.insertProviderAt(i, Security.getProviders().length + 1);
-            } catch (Exception e) {
-                System.out.println("Failed to add " + i.getName() + " providers as a service: " + e.getMessage());
-            }
-        }
-
-        try {
-            Security.insertProviderAt((Provider) Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider").newInstance(), Security.getProviders().length + 1);
-            Security.insertProviderAt((Provider)Class.forName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider").newInstance(), Security.getProviders().length + 1);
-        } catch (Exception e) {
-            System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
-        }
+    public static void providers() {
 
         try {
             StringBuilder buffer = new StringBuilder();
@@ -166,52 +249,8 @@ public class KeyStorePlay {
         System.out.println("Checking export policy");
         System.out.println("is restricted: " + KeyStorePlay.isRestricted());
 
-        System.out.println("*************");
-        System.out.println("checking default trust store");
-        // Oracle official order for default trust store
-        checkKeyStore(System.getProperty("javax.net.ssl.trustStore"), System.getProperty("javax.net.ssl.trustStoreType", KeyStore.getDefaultType()));
-        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "jssecacerts", "jks");
-        checkKeyStore(System.getProperty("java.home") + File.separator + "lib" + File.separator + "security" + File.separator + "cacerts", "jks");
-        try {
-            KeyStore appleKeyStore = KeyStore.getInstance("KeychainStore");
-            appleKeyStore.load(null, "".toCharArray());
-            System.out.println("KeychainStore");
-            printKeyStoreInfo(appleKeyStore);
-        } catch (KeyStoreException e) {
-        } catch (NoSuchAlgorithmException e) {
-            System.out.println("Missing algorithm:" + e.getMessage());
-        } catch (CertificateException e) {
-            System.out.println("Invalid certificate:" + e.getMessage());
-        } catch (IOException e) {
-            System.out.println("Unable to load Apple Keychain: " + e.getMessage());
-        }
         enumerateProviders();
         enumerateServices();
-        checkSSLContext();
-        for (String prop: new String[] {"java.security",
-                "cert.provider.x509v", 
-                "java.protocol.handler.pkgs",
-                "ssl.SocketFactory.provider",
-                "javax.net.ssl.keyStore",
-                "javax.net.ssl.keyStorePassword",
-                "javax.net.ssl.keyStoreProvider",
-                "javax.net.ssl.keyStoreType",
-                "javax.net.ssl.trustStore",
-                "javax.net.ssl.trustStoreType",
-                "ssl.KeyManagerFactory.algorithm",
-                "ssl.TrustManagerFactory.algorithm",
-                "jdk.tls.disabledAlgorithms", 
-                "jdk.certpath.disabledAlgorithms",
-                "jsse.enableSNIExtension",
-                "https.cipherSuites",
-                "sun.security.ssl.allowLegacyHelloMessages",
-        "jdk.tls.ephemeralDHKeySize"}) {
-            String value = java.security.Security.getProperty(prop);
-            if (value != null) {
-                System.out.format("%s=%s\n", prop, value);
-            }
-        }
-
 
     }
 
@@ -231,7 +270,6 @@ public class KeyStorePlay {
     }
 
     private static void checkKeyStore(String file, String storeType) {
-        System.out.printf("%s %s\n", file, storeType);
         if(file == null){
             return;
         }
@@ -258,24 +296,6 @@ public class KeyStorePlay {
         System.out.println("  type: " + ks.getType());
         System.out.println("  provider: " + ks.getProvider().getName());
         System.out.println("  count: " + ks.size());
-    }
-
-    private static void checkSSLContext() {
-        System.out.println("*************");
-        System.out.println("Checking sslparameters");
-        try {
-            SSLParameters params = SSLContext.getDefault().getSupportedSSLParameters();
-            System.out.println("Supported:");
-            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
-            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
-            System.out.println("Defaults:");
-            params = SSLContext.getDefault().getDefaultSSLParameters();
-            System.out.println("  providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
-            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
-            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
-        } catch (NoSuchAlgorithmException e) {
-            System.out.println("Missing algorithm:" + e.getMessage());
-        }        
     }
 
     private static void enumerateProviders() {
