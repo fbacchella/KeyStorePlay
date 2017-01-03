@@ -1,6 +1,6 @@
 # An java SSL and security analyzer
 
-This is a tool that help to debug jave security and ssl context.
+This is a tool that help to debug java security and ssl context.
 
 It's a command line tool that dump some informations.
 
