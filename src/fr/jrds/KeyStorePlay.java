@@ -182,6 +182,7 @@ public class KeyStorePlay {
         System.out.println("");
         System.out.println("Current sssl and security properties");
         for (String prop: new String[] {"java.security",
+                "crypto.policy", 
                 "cert.provider.x509v", 
                 "java.protocol.handler.pkgs",
                 "ssl.SocketFactory.provider",
@@ -193,8 +194,10 @@ public class KeyStorePlay {
                 "javax.net.ssl.trustStoreType",
                 "ssl.KeyManagerFactory.algorithm",
                 "ssl.TrustManagerFactory.algorithm",
-                "jdk.tls.disabledAlgorithms", 
                 "jdk.certpath.disabledAlgorithms",
+                "jdk.jar.disabledAlgorithms",
+                "jdk.tls.disabledAlgorithms", 
+                "jdk.tls.legacyAlgorithms", 
                 "jsse.enableSNIExtension",
                 "https.cipherSuites",
                 "sun.security.ssl.allowLegacyHelloMessages",
