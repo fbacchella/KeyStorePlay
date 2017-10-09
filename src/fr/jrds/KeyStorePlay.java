@@ -95,6 +95,9 @@ public class KeyStorePlay {
                 else if ("-loadbc".equals(arg)) {
                     loadbouncycastle();
                 }
+                else if ("-loadelytron".equals(arg)) {
+                    loadwildflyelytron();
+                }
                 else if ("-autoload".equals(arg)) {
                     loadservices();
                 }
@@ -148,6 +151,15 @@ public class KeyStorePlay {
             System.out.println("Loaded BouncyCastle");
         } catch (Exception e) {
             System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
+        }
+    }
+
+    private static void loadwildflyelytron() {
+        try {
+            Security.insertProviderAt((Provider) Class.forName("org.wildfly.security.WildFlyElytronProvider").newInstance(), Security.getProviders().length + 1);
+            System.out.println("Loaded WildFly Elytron");
+        } catch (Exception e) {
+            System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
         }
     }
 
