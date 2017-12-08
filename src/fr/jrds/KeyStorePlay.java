@@ -36,6 +36,9 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
 
 public class KeyStorePlay {
 
@@ -65,47 +68,81 @@ public class KeyStorePlay {
 
         return false;
     }
+    
+    @Parameter(names = {"--providers", "-p"}, description = "List known security provides")
+    boolean providers = false;
+
+    @Parameter(names = {"--services", "-s"}, description = "List known security services")
+    boolean services = false;
+
+    @Parameter(names = {"--connect", "-c"}, description = "Try a ssl/tls connection")
+    String destination = null;
+
+    @Parameter(names = {"--keystore", "-k"}, description = "Dump the content of a keystore")
+    String keystore = null;
+
+    @Parameter(names = {"--defaultssl", "-d"}, description = "Details default ssl/tls settings")
+    boolean defaultssl = false;
+
+    @Parameter(names = {"--loadbc", "-b"}, description = "Add BouncyCastle security provider")
+    boolean bouncycastle = false;
+
+    @Parameter(names = {"--wildflyelytron", "-w"}, description = "Add WildFly Elytron security provider")
+    boolean wildflyelytron = false;
+
+    @Parameter(names = {"--autoload", "-a"}, description = "Autoload security services defined in MANIFEST.mf")
+    boolean autoload = false;
+
+    @Parameter(names = {"--searchks", "-K"}, description = "Search in keystores")
+    boolean searchks = false;
+
+    @Parameter(names = {"--help", "-h"}, help = true)
+    private boolean help;
 
     public static void main(String[] args) {
+        KeyStorePlay main = new KeyStorePlay();
+        JCommander jcom = JCommander
+                .newBuilder()
+                .addObject(main)
+                .build();
 
-        if (args.length > 0) {
-            List<String> argsList = Arrays.asList(args);
-            Iterator<String> i = argsList.iterator();
-            while (i.hasNext()) {
-                String arg = i.next();
-                if ("-providers".equals(arg)) {
-                    enumerateProviders();
-                }
-                else if ("-services".equals(arg)) {
-                    enumerateServices();
-                }
-                else if ("-connect".equals(arg)) {
-                    if (i.hasNext()) {
-                        connect(i.next());
-                    }
-                }
-                else if ("-keystore".equals(arg)) {
-                    if (i.hasNext()) {
-                        dumpKeyStore(i.next());
-                    }
-                }
-                else if ("-defaultssl".equals(arg)) {
-                    defaultssl();
-                }
-                else if ("-loadbc".equals(arg)) {
-                    loadbouncycastle();
-                }
-                else if ("-loadelytron".equals(arg)) {
-                    loadwildflyelytron();
-                }
-                else if ("-autoload".equals(arg)) {
-                    loadservices();
-                }
-                else if ("-searchks".equals(arg)) {
-                    searchks();
-                }
-            }
+        try {
+            jcom.parse(args);
+        } catch (ParameterException e) {
+            System.err.println(e.getMessage());
         }
+        if (main.help) {
+            jcom.usage();
+            System.exit(0);
+        }
+        if (main.bouncycastle) {
+            loadbouncycastle();
+        }
+        if (main.wildflyelytron) {
+            loadwildflyelytron();
+        }
+        if (main.autoload) {
+            loadservices();
+        }
+        if (main.providers) {
+            enumerateProviders();
+        }
+        if (main.services) {
+            enumerateServices();
+        }
+        if (main.destination != null) {
+            connect(main.destination);
+        }
+        if (main.keystore != null) {
+            dumpKeyStore(main.keystore);
+        }
+        if (main.defaultssl) {
+            defaultssl();
+        }
+        if (main.searchks) {
+            searchks();
+        }
+
     }
 
     private static void searchks() {
@@ -180,7 +217,7 @@ public class KeyStorePlay {
             System.out.println("Missing algorithm:" + e.getMessage());
         }
         System.out.println("");
-        System.out.println("Current sssl and security properties");
+        System.out.println("Current ssl/tls and security properties");
         for (String prop: new String[] {"java.security",
                 "crypto.policy", 
                 "cert.provider.x509v", 

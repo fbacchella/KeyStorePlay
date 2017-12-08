@@ -39,6 +39,11 @@
             <artifactId>wildfly-elytron</artifactId>
             <version>1.1.7.Final</version>
         </dependency>
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>1.72</version>
+        </dependency>
     </dependencies>
     <build>
         <sourceDirectory>${project.basedir}/src</sourceDirectory>
