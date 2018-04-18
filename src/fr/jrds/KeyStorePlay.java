@@ -202,17 +202,13 @@ public class KeyStorePlay {
 
     private static void defaultssl() {
         System.out.println("*************");
-        System.out.println("Checking sslparameters");
+        System.out.println("Checking SSL context parameters");
         try {
-            SSLParameters params = SSLContext.getDefault().getSupportedSSLParameters();
+            System.out.println("  SSL/TLS socket providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
             System.out.println("Supported:");
-            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
-            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+            printSslParams(SSLContext.getDefault().getSupportedSSLParameters());
             System.out.println("Defaults:");
-            params = SSLContext.getDefault().getDefaultSSLParameters();
-            System.out.println("  providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
-            System.out.println("  cipher suites: " + Arrays.toString(params.getCipherSuites()));
-            System.out.println("  protocols: " + Arrays.toString(params.getProtocols()));
+            printSslParams(SSLContext.getDefault().getDefaultSSLParameters());
         } catch (NoSuchAlgorithmException e) {
             System.out.println("Missing algorithm:" + e.getMessage());
         }
@@ -238,12 +234,22 @@ public class KeyStorePlay {
                 "jsse.enableSNIExtension",
                 "https.cipherSuites",
                 "sun.security.ssl.allowLegacyHelloMessages",
-                "jdk.tls.ephemeralDHKeySize"}) {
+                "jdk.tls.ephemeralDHKeySize",
+                "jceks.key.serialFilter"}) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
                 System.out.format("%s=%s\n", prop, value);
             }
         }
+    }
+    
+    private static void printSslParams(SSLParameters params) {
+        System.out.println("  cipher suites:");
+        for(String c: params.getCipherSuites()) {
+            System.out.println("    " + c);
+        }
+        String protocols = Arrays.toString(params.getProtocols());
+        System.out.println("  protocols: " + protocols.substring(1,  protocols.length() -1));
     }
 
     public static void dumpKeyStore(String storeFile) {
