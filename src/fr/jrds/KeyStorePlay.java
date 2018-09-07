@@ -90,6 +90,9 @@ public class KeyStorePlay {
     @Parameter(names = {"--wildflyelytron", "-w"}, description = "Add WildFly Elytron security provider")
     boolean wildflyelytron = false;
 
+    @Parameter(names = {"--conscrypt", "-g"}, description = "Add Google's conscrypt security provider")
+    boolean conscrypt = false;
+
     @Parameter(names = {"--autoload", "-a"}, description = "Autoload security services defined in MANIFEST.mf")
     boolean autoload = false;
 
@@ -120,6 +123,9 @@ public class KeyStorePlay {
         }
         if (main.wildflyelytron) {
             loadwildflyelytron();
+        }
+        if (main.conscrypt) {
+            loadconscrypt();
         }
         if (main.autoload) {
             loadservices();
@@ -197,6 +203,15 @@ public class KeyStorePlay {
             System.out.println("Loaded WildFly Elytron");
         } catch (Exception e) {
             System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
+        }
+    }
+
+    private static void loadconscrypt() {
+        try {
+            Security.insertProviderAt((Provider) Class.forName("org.conscrypt.OpenSSLProvider").newInstance(), Security.getProviders().length + 1);
+            System.out.println("Loaded Google's conscrypt");
+        } catch (Exception e) {
+            System.out.println("Failed to add Google's conscrypt provider: " + e.getMessage());
         }
     }
 

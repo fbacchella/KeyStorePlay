@@ -44,6 +44,12 @@
             <artifactId>jcommander</artifactId>
             <version>1.72</version>
         </dependency>
+        <dependency>
+            <groupId>org.conscrypt</groupId>
+            <artifactId>conscrypt-openjdk</artifactId>
+            <version>1.2.0</version>
+            <classifier>${os.detected.classifier}</classifier>
+        </dependency>
     </dependencies>
     <build>
         <sourceDirectory>${project.basedir}/src</sourceDirectory>
@@ -91,6 +97,13 @@
                 </executions>
             </plugin>
         </plugins>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.4.1.Final</version>
+            </extension>
+        </extensions>
     </build>
     <reporting>
         <plugins>
