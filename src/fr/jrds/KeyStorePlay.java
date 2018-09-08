@@ -106,6 +106,14 @@ public class KeyStorePlay {
     private boolean help;
 
     public static void main(String[] args) {
+        try {
+            Security.insertProviderAt((Provider)Class.forName("sun.security.jgss.wrapper.SunNativeProvider").newInstance(), Security.getProviders().length + 1);
+            Security.insertProviderAt((Provider)Class.forName("sun.security.jgss.SunProvider").newInstance(), Security.getProviders().length + 1);
+        } catch (InstantiationException | IllegalAccessException
+                        | ClassNotFoundException e) {
+            System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + e.getMessage());
+        }
+
         KeyStorePlay main = new KeyStorePlay();
         JCommander jcom = JCommander
                 .newBuilder()
