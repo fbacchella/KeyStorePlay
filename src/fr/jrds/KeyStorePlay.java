@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -81,8 +81,11 @@ public class KeyStorePlay {
     @Parameter(names = {"--keystore", "-k"}, description = "Dump the content of a keystore")
     String keystore = null;
 
-    @Parameter(names = {"--defaultssl", "-d"}, description = "Details default ssl/tls settings")
-    boolean defaultssl = false;
+    @Parameter(names = {"--securityproperties", "-P"}, description = "List defined security properties")
+    boolean secprops = false;
+
+    @Parameter(names = {"--enumeratetls", "-t"}, description = "Enumerate ssl/tls settings")
+    boolean enumeratessl = false;
 
     @Parameter(names = {"--loadbc", "-b"}, description = "Add BouncyCastle security provider")
     boolean bouncycastle = false;
@@ -142,8 +145,11 @@ public class KeyStorePlay {
         if (main.keystore != null) {
             dumpKeyStore(main.keystore);
         }
-        if (main.defaultssl) {
-            defaultssl();
+        if (main.secprops) {
+            secprops();
+        }
+        if (main.enumeratessl) {
+            enumeratessl();
         }
         if (main.searchks) {
             searchks();
@@ -215,56 +221,92 @@ public class KeyStorePlay {
         }
     }
 
-    private static void defaultssl() {
+    private static void secprops() {
         System.out.println("*************");
-        System.out.println("Checking SSL context parameters");
-        try {
-            System.out.println("  SSL/TLS socket providing class: " + SSLContext.getDefault().getServerSocketFactory().getClass());
-            System.out.println("Supported:");
-            printSslParams(SSLContext.getDefault().getSupportedSSLParameters());
-            System.out.println("Defaults:");
-            printSslParams(SSLContext.getDefault().getDefaultSSLParameters());
-        } catch (NoSuchAlgorithmException e) {
-            System.out.println("Missing algorithm:" + e.getMessage());
-        }
-        System.out.println("");
-        System.out.println("Current ssl/tls and security properties");
+        System.out.println("Current know security properties");
         for (String prop: new String[] {"java.security",
-                "crypto.policy", 
-                "cert.provider.x509v", 
-                "java.protocol.handler.pkgs",
-                "ssl.SocketFactory.provider",
-                "javax.net.ssl.keyStore",
-                "javax.net.ssl.keyStorePassword",
-                "javax.net.ssl.keyStoreProvider",
-                "javax.net.ssl.keyStoreType",
-                "javax.net.ssl.trustStore",
-                "javax.net.ssl.trustStoreType",
-                "ssl.KeyManagerFactory.algorithm",
-                "ssl.TrustManagerFactory.algorithm",
-                "jdk.certpath.disabledAlgorithms",
-                "jdk.jar.disabledAlgorithms",
-                "jdk.tls.disabledAlgorithms", 
-                "jdk.tls.legacyAlgorithms", 
-                "jsse.enableSNIExtension",
-                "https.cipherSuites",
-                "sun.security.ssl.allowLegacyHelloMessages",
-                "jdk.tls.ephemeralDHKeySize",
-                "jceks.key.serialFilter"}) {
+                                        "crypto.policy", 
+                                        "cert.provider.x509v", 
+                                        "java.protocol.handler.pkgs",
+                                        "ssl.SocketFactory.provider",
+                                        "javax.net.ssl.keyStore",
+                                        "javax.net.ssl.keyStorePassword",
+                                        "javax.net.ssl.keyStoreProvider",
+                                        "javax.net.ssl.keyStoreType",
+                                        "javax.net.ssl.trustStore",
+                                        "javax.net.ssl.trustStoreType",
+                                        "ssl.KeyManagerFactory.algorithm",
+                                        "ssl.TrustManagerFactory.algorithm",
+                                        "jdk.certpath.disabledAlgorithms",
+                                        "jdk.jar.disabledAlgorithms",
+                                        "jdk.tls.disabledAlgorithms", 
+                                        "jdk.tls.legacyAlgorithms", 
+                                        "jsse.enableSNIExtension",
+                                        "https.cipherSuites",
+                                        "sun.security.ssl.allowLegacyHelloMessages",
+                                        "jdk.tls.ephemeralDHKeySize",
+                                        "jceks.key.serialFilter"}) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
                 System.out.format("%s=%s\n", prop, value);
             }
         }
     }
-    
-    private static void printSslParams(SSLParameters params) {
-        System.out.println("  cipher suites:");
-        for(String c: params.getCipherSuites()) {
-            System.out.println("    " + c);
+
+    private static void enumeratessl() {
+        System.out.println("*************");
+        System.out.println("Enumerating SSL context parameters");
+
+        Map<String, List<String>> providers = new TreeMap<>();
+        Map<String, String> defaultprotos = new HashMap<>();
+        for(Provider p: Security.getProviders()) {
+            List<String> contexts = new ArrayList<>();
+            for(Provider.Service s: p.getServices()) {
+                if ("SSLContext".equals(s.getType())) {
+                    contexts.add(s.getAlgorithm());
+                }
+            }
+            if (contexts.size() > 0) {
+                providers.put(p.getName(), contexts);
+            }
         }
+        for (Entry<String, List<String>> p: providers.entrySet()) {
+            System.out.println("**** " + p.getKey());
+            for (String a: p.getValue()) {
+                System.out.println("  " + a + (a.equals(defaultprotos.get(p.getKey())) ? " (default)" : ""));
+                try {
+                    SSLContext ctx = SSLContext.getInstance(a, p.getKey());
+                    if ( ! "Default".equals(a)) {
+                        ctx.init(null, null, null);
+                    }
+                    SSLParameters defaultparams = ctx.getDefaultSSLParameters();
+                    SSLParameters supportedparams = ctx.getSupportedSSLParameters();
+
+                    System.out.println("    SSL/TLS socket providing class: " + ctx.getServerSocketFactory().getClass());
+
+                    System.out.println("    Default protocols:");
+                    System.out.println("      " + getProtocols(defaultparams));
+                    System.out.println("    Supported protocols:");
+                    System.out.println("      " + getProtocols(supportedparams));
+                    System.out.println("    Defaults cipher suites:");
+                    for(String c: defaultparams.getCipherSuites()) {
+                        System.out.println("      " + c);
+                    }
+                    System.out.println("    Supported cipher suites:");
+                    for(String c: supportedparams.getCipherSuites()) {
+                        System.out.println("      " + c);
+                    }
+                } catch (NoSuchAlgorithmException | NoSuchProviderException | IllegalStateException | KeyManagementException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+    }
+
+    private static String getProtocols(SSLParameters params) {
         String protocols = Arrays.toString(params.getProtocols());
-        System.out.println("  protocols: " + protocols.substring(1,  protocols.length() -1));
+        return protocols.substring(1,  protocols.length() -1);
     }
 
     public static void dumpKeyStore(String storeFile) {
