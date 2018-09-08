@@ -68,7 +68,7 @@ public class KeyStorePlay {
 
         return false;
     }
-    
+
     @Parameter(names = {"--providers", "-p"}, description = "List known security provides")
     boolean providers = false;
 
@@ -116,9 +116,9 @@ public class KeyStorePlay {
 
         KeyStorePlay main = new KeyStorePlay();
         JCommander jcom = JCommander
-                .newBuilder()
-                .addObject(main)
-                .build();
+                        .newBuilder()
+                        .addObject(main)
+                        .build();
 
         try {
             jcom.parse(args);
@@ -492,6 +492,6 @@ public class KeyStorePlay {
                 System.out.println("    " + i.getKey() + ": " + i.getValue().toString());
             }
         }
-    }    
+    }
 
 }
