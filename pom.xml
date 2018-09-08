@@ -13,7 +13,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javac.target>1.7</javac.target>
-        <bouncycastle>1.59</bouncycastle>
+        <bouncycastle>1.60</bouncycastle>
         <mainClass>fr.jrds.KeyStorePlay</mainClass>
         <uberjar.name>keystoreplay</uberjar.name>
     </properties>
@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron</artifactId>
-            <version>1.2.4.Final</version>
+            <version>1.6.0.Final</version>
         </dependency>
         <dependency>
             <groupId>com.beust</groupId>
@@ -101,7 +101,7 @@
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
-                <version>1.4.1.Final</version>
+                <version>1.6.0</version>
             </extension>
         </extensions>
     </build>
