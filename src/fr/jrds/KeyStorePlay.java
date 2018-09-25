@@ -255,7 +255,8 @@ public class KeyStorePlay {
                                         "https.cipherSuites",
                                         "sun.security.ssl.allowLegacyHelloMessages",
                                         "jdk.tls.ephemeralDHKeySize",
-                                        "jceks.key.serialFilter"}) {
+                                        "jceks.key.serialFilter",
+                                        "jdk.tls.keyLimits"}) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
                 System.out.format("%s=%s\n", prop, value);
