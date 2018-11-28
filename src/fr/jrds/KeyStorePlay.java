@@ -256,7 +256,10 @@ public class KeyStorePlay {
                                         "sun.security.ssl.allowLegacyHelloMessages",
                                         "jdk.tls.ephemeralDHKeySize",
                                         "jceks.key.serialFilter",
-                                        "jdk.tls.keyLimits"}) {
+                                        "jdk.tls.keyLimits",
+                                        "securerandom.strongAlgorithms",
+                                        "securerandom.source",
+                                        "java.security.egd"}) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
                 System.out.format("%s=%s\n", prop, value);
