@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -107,13 +108,28 @@ public class KeyStorePlay {
     @Parameter(names = {"--help", "-h"}, help = true)
     private boolean help;
 
+    private static final Set<Class<? extends Provider>> registredProvider = new HashSet<>();
+    
     public static void main(String[] args) {
         try {
-            Security.insertProviderAt((Provider)Class.forName("sun.security.jgss.wrapper.SunNativeProvider").newInstance(), Security.getProviders().length + 1);
-            Security.insertProviderAt((Provider)Class.forName("sun.security.jgss.SunProvider").newInstance(), Security.getProviders().length + 1);
-        } catch (InstantiationException | IllegalAccessException
-                        | ClassNotFoundException e) {
-            System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + e.getMessage());
+            for (String s: new String[] {"sun.security.jgss.wrapper.SunNativeProvider", "sun.security.jgss.SunProvider"}) {
+                loadByName(s);
+            }
+        } catch (ClassNotFoundException | InstantiationException
+                        | IllegalAccessException ex) {
+          System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + ex.getMessage());
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            Class<Provider> clazz = (Class<Provider>) Class.forName("org.apache.wss4j.common.crypto.ThreadLocalSecurityProvider");
+            if (! registredProvider.contains(clazz)) {
+                clazz.getMethod("install").invoke(null);
+                registredProvider.add(clazz);
+                System.out.println("Loaded TLSP");
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
         }
 
         KeyStorePlay main = new KeyStorePlay();
@@ -132,7 +148,7 @@ public class KeyStorePlay {
             System.exit(0);
         }
         if (main.autoload) {
-            loadservices(main.classpath);
+            loadservices();
         }
         if (main.bouncycastle) {
             loadbouncycastle();
@@ -194,19 +210,23 @@ public class KeyStorePlay {
         System.out.println("Register security provider declared as services");
         ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
         for(Provider i: sl) {
+            if (registredProvider.contains(i.getClass())) {
+                continue;
+            }
             System.out.println("    register " + i);
             try {
-                Security.insertProviderAt(i, Security.getProviders().length + 1);
-            } catch (Exception e) {
-                System.out.println("Failed to add " + i.getName() + " providers as a service: " + e.getMessage());
+                Security.insertProviderAt(i, Security.getProviders().length);
+            } catch (Exception ex) {
+                System.out.println("Failed to add " + i.getName() + " providers as a service: " + ex.getMessage());
             }
         }
     }
 
     private static void loadbouncycastle() {
         try {
-            Security.insertProviderAt((Provider) Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider").newInstance(), Security.getProviders().length + 1);
-            Security.insertProviderAt((Provider)Class.forName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider").newInstance(), Security.getProviders().length + 1);
+            loadByName("org.bouncycastle.jce.provider.BouncyCastleProvider");
+            loadByName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider");
+            loadByName("org.bouncycastle.jsse.provider.BouncyCastleJsseProvider");
             System.out.println("Loaded BouncyCastle");
         } catch (Exception e) {
             System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
@@ -215,7 +235,7 @@ public class KeyStorePlay {
 
     private static void loadwildflyelytron() {
         try {
-            Security.insertProviderAt((Provider) Class.forName("org.wildfly.security.WildFlyElytronProvider").newInstance(), Security.getProviders().length + 1);
+            loadByName("org.wildfly.security.WildFlyElytronProvider");
             System.out.println("Loaded WildFly Elytron");
         } catch (Exception e) {
             System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
@@ -224,7 +244,7 @@ public class KeyStorePlay {
 
     private static void loadconscrypt() {
         try {
-            Security.insertProviderAt((Provider) Class.forName("org.conscrypt.OpenSSLProvider").newInstance(), Security.getProviders().length + 1);
+            loadByName("org.conscrypt.OpenSSLProvider");
             System.out.println("Loaded Google's conscrypt");
         } catch (Exception e) {
             System.out.println("Failed to add Google's conscrypt provider: " + e.getMessage());
@@ -499,6 +519,15 @@ public class KeyStorePlay {
             for(Entry<String, List<String>> i: e.getValue().entrySet()) {
                 System.out.println("    " + i.getKey() + ": " + i.getValue().toString());
             }
+        }
+    }
+    
+    private static void loadByName(String providerClassName) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+        @SuppressWarnings("unchecked")
+        Class<Provider> clazz = (Class<Provider>) Class.forName(providerClassName);
+        if (! registredProvider.contains(clazz)) {
+            Security.insertProviderAt(clazz.newInstance(), Security.getProviders().length);
+            registredProvider.add(clazz);
         }
     }
 
