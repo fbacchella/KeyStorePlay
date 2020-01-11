@@ -327,18 +327,20 @@ public class KeyStorePlay {
         System.out.println("*************");
         System.out.println("Dumping keystore " + storeFile);
         String storeType = null;
-        if (storeFile.endsWith("p12") || storeFile.endsWith("pfx")) {
+        if (storeFile.endsWith(".p12") || storeFile.endsWith(".pfx")) {
             storeType = "PKCS12";
-        } else if (storeFile.endsWith("jks")) {
+        } else if (storeFile.endsWith(".jks")) {
             storeType = "JKS";
-        } else if (storeFile.endsWith("ks")) {
+        } else if (storeFile.endsWith(".ks")) {
             storeType = "JKS";
-        } else if (storeFile.endsWith("jceks")) {
+        } else if (storeFile.endsWith(".jceks")) {
             storeType = "JCEKS";
-        } else if (storeFile.endsWith("bks")) {
+        } else if (storeFile.endsWith(".bks")) {
             storeType = "BKS";
-        } else if (storeFile.endsWith("policy")) {
+        } else if (storeFile.endsWith(".policy")) {
             storeType = "DKS";
+        } else if (storeFile.endsWith("cacerts")) {
+            storeType = "JKS";
         }
         if (storeType != null) {
             checkStore(storeFile, storeType);
