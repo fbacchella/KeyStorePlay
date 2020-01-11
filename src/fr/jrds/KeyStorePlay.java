@@ -131,6 +131,9 @@ public class KeyStorePlay {
             jcom.usage();
             System.exit(0);
         }
+        if (main.autoload) {
+            loadservices(main.classpath);
+        }
         if (main.bouncycastle) {
             loadbouncycastle();
         }
@@ -139,9 +142,6 @@ public class KeyStorePlay {
         }
         if (main.conscrypt) {
             loadconscrypt();
-        }
-        if (main.autoload) {
-            loadservices();
         }
         if (main.providers) {
             enumerateProviders();
