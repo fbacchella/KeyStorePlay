@@ -13,7 +13,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javac.target>1.7</javac.target>
-        <bouncycastle>1.60</bouncycastle>
+        <bouncycastle>1.64</bouncycastle>
         <mainClass>fr.jrds.KeyStorePlay</mainClass>
         <uberjar.name>keystoreplay</uberjar.name>
     </properties>
@@ -27,6 +27,16 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-ext-jdk15on</artifactId>
+            <version>${bouncycastle}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bouncycastle}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bctls-jdk15on</artifactId>
             <version>${bouncycastle}</version>
         </dependency>
         <dependency>
