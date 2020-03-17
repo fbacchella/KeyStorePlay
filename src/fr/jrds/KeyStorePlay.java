@@ -32,6 +32,8 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
@@ -452,6 +454,21 @@ public class KeyStorePlay {
         System.out.println("  count: " + ks.size());
     }
 
+    private static final Comparator<Entry<?, ?>> propsComparator = new Comparator<Entry<?, ?>>() {
+        @Override
+        public int compare(Entry<?, ?> o1,
+                           Entry<?, ?> o2) {
+            int c1 = o1.toString().compareTo(o2.toString());
+            if (c1 == 0) {
+                return o2.toString().compareTo(o2.toString());
+            } else {
+                return c1;
+            }
+        }
+    };
+
+    private static final Pattern PROPINFOPATTERN = Pattern.compile("^([A-Za-z0-9]+)\\.([#:_\\(\\)/A-Za-z0-9\\.-]+)(?: (.+))?$");
+    private static final Pattern ALIASEPATTERN = Pattern.compile("^Alg\\.Alias\\.([A-Za-z0-9]+)\\.(.+)$");
     private static void enumerateProviders() {
         System.out.println("*************");
         System.out.println("Providers enumeration");
@@ -462,20 +479,108 @@ public class KeyStorePlay {
             }
         });
         providers.addAll(Arrays.asList(Security.getProviders()));
+        System.out.println(Arrays.asList(Security.getProviders()));
         for(Provider p: providers) {
             Map<String, Set<String>> services = new TreeMap<String, Set<String>>();
             System.out.println("**** " + p.getName());
             System.out.println("    " + p.getInfo());
+            System.out.println("    " + p.getVersion());
             System.out.println("    location: " + p.getClass().getName() + "@" + locateJar(p.getClass()));
-            System.out.println();
             for(Provider.Service s: p.getServices()) {
                 if (! services.containsKey(s.getType())) {
                     services.put(s.getType(), new TreeSet<String>());
                 }
                 services.get(s.getType()).add(s.getAlgorithm());
             }
-            for(Map.Entry<String, Set<String>> e: services.entrySet()) {
-                System.out.println("    " + e.getKey() +": " + e.getValue());
+            List<Entry<Object, Object>> properties = new ArrayList<>(p.entrySet());
+            Map<String, Map<String, Map<String, String>>> propsMap = new HashMap<>();
+            Map<String, Map<String, Set<String>>> aliases = new HashMap<>();
+            for (String service: services.keySet()) {
+                propsMap.put(service, new HashMap<String, Map<String, String>>());
+                aliases.put(service, new HashMap<String, Set<String>>());
+            }
+            if (properties.size() > 0) {
+                Collections.sort(properties, propsComparator);
+                for (Entry<Object, Object> e: properties) {
+                    String propPath = e.getKey().toString();
+                    try {
+                        Matcher ma = ALIASEPATTERN.matcher(propPath);
+                        if (ma.matches()) {
+                            String propService = ma.group(1);
+                            String propAlgorithm = ma.group(2);
+                            if (! aliases.containsKey(propService)) {
+                                aliases.put(propService, new HashMap<String, Set<String>>());
+                            }
+                            if (! aliases.get(propService).containsKey(e.getValue().toString())) {
+                                aliases.get(propService).put(e.getValue().toString(), new HashSet<String>());
+                            }
+                            aliases.get(propService).get(e.getValue().toString()).add(propAlgorithm);
+                        } else {
+                            Matcher m = PROPINFOPATTERN.matcher(propPath);
+                            if (m.matches()) {
+                                String propService = m.group(1);
+                                String propAlgorithm = m.group(2);
+                                String propName = m.group(3);
+                                if (propName == null) {
+                                    propName = "Implementing class";
+                                }
+                                if (! propsMap.containsKey(propService)) {
+                                    propsMap.put(propService, new HashMap<String, Map<String, String>>());
+                                }
+                                Map<String, Map<String, String>> algoProps = propsMap.get(propService);
+                                if (! algoProps.containsKey(propAlgorithm)) {
+                                    algoProps.put(propAlgorithm, new HashMap<String, String>());
+                                }
+                                algoProps.get(propAlgorithm).put(propName, e.getValue().toString());
+                            } else {
+                                System.out.format("not matching for %s\n", propPath);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+            propsMap.remove("Provider");
+            System.out.println();
+            for (Map.Entry<String, Set<String>> e: services.entrySet()) {
+                System.out.format("    %s:\n", e.getKey());
+                Map<String, Map<String, String>> algsProps = propsMap.remove(e.getKey());
+                List<Entry<String, Map<String, String>>> algos = new ArrayList<>(algsProps.entrySet());
+                Collections.sort(algos, propsComparator);
+                Map<String, Set<String>> serviceAliases = aliases.get(e.getKey());
+                for (Entry<String, Map<String, String>> a: algos) {
+                    String algo = a.getKey();
+                    Map<String, String> algoProps = a.getValue();
+                    algoProps.remove("Implementing class");
+                    algoProps.remove("ImplementedIn");
+                    Set<String> algoAliases;
+                    if (serviceAliases.containsKey(algo)) {
+                        algoAliases = serviceAliases.get(algo);
+                    } else {
+                        algoAliases = Collections.emptySet();
+                    }
+                    System.out.format("        %s%s\n",
+                                      algo,
+                                      algoProps.isEmpty() ? "" : ":"
+                                    );
+                    if (! algoAliases.isEmpty()) {
+                        System.out.format("            Aliases: %s\n", algoAliases);
+                    }
+                    for (Entry<String, String> prop: algoProps.entrySet()) {
+                        System.out.format("            %s: %s\n", prop.getKey(), prop.getValue());
+                    }
+                }
+            }
+            if (propsMap.containsKey("Alg.Alias")) {
+                System.out.format("\n    Aliases\n");
+                for (Map.Entry<String, Map<String, String>> a: propsMap.remove("Alg.Alias").entrySet()) {
+                    System.out.format("        %s -> %s\n", a.getKey(), a.getValue().get("Implementing class"));
+
+                }
+            }
+            if (! propsMap.isEmpty()) {
+                System.out.format("    %s:\n", propsMap);
             }
         }
     }
