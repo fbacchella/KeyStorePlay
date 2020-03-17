@@ -128,8 +128,8 @@ public class KeyStorePlay {
                 registredProvider.add(clazz);
                 System.out.println("Loaded TLSP");
             }
-        } catch (Exception e) {
-            System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
+        } catch (Exception | UnsupportedClassVersionError e) {
+            System.out.println("Failed to add ThreadLocalSecurityProvider provider: " + e.getMessage());
         }
 
         KeyStorePlay main = new KeyStorePlay();
@@ -228,7 +228,7 @@ public class KeyStorePlay {
             loadByName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider");
             loadByName("org.bouncycastle.jsse.provider.BouncyCastleJsseProvider");
             System.out.println("Loaded BouncyCastle");
-        } catch (Exception e) {
+        } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
         }
     }
@@ -237,7 +237,7 @@ public class KeyStorePlay {
         try {
             loadByName("org.wildfly.security.WildFlyElytronProvider");
             System.out.println("Loaded WildFly Elytron");
-        } catch (Exception e) {
+        } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
         }
     }
@@ -246,7 +246,7 @@ public class KeyStorePlay {
         try {
             loadByName("org.conscrypt.OpenSSLProvider");
             System.out.println("Loaded Google's conscrypt");
-        } catch (Exception e) {
+        } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add Google's conscrypt provider: " + e.getMessage());
         }
     }
