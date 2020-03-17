@@ -43,6 +43,8 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 
+import sun.security.pkcs11.SunPKCS11;
+
 public class KeyStorePlay {
 
 
@@ -92,7 +94,8 @@ public class KeyStorePlay {
         } catch (Exception | UnsupportedClassVersionError ex) {
             System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + ex.getMessage());
         }
-
+        tryPkcs11();
+        
         try {
             @SuppressWarnings("unchecked")
             Class<Provider> clazz = (Class<Provider>) Class.forName("org.apache.wss4j.common.crypto.ThreadLocalSecurityProvider");
@@ -365,28 +368,21 @@ public class KeyStorePlay {
         }
     }
 
-    public static void providers() {
-
-        try {
+    @SuppressWarnings("restriction")
+    public static void tryPkcs11() {
+        if (! registredProvider.contains(SunPKCS11.class)) {
             StringBuilder buffer = new StringBuilder();
             buffer.append("name=NSS\n");
             buffer.append("nssDbMode=noDb\n");
-
-            @SuppressWarnings("restriction")
-            Provider p = new sun.security.pkcs11.SunPKCS11(new ByteArrayInputStream(buffer.toString().getBytes()));
-            Security.insertProviderAt(p, Security.getProviders().length + 1);
-        } catch (Exception e) {
-            System.out.println("Failed to add nss PKCS11 provider: " + e.getMessage());
+            // Needs to use introspection because of API change
+            try (ByteArrayInputStream bis = new ByteArrayInputStream(buffer.toString().getBytes())) {
+                SunPKCS11 p = SunPKCS11.class.getConstructor(ByteArrayInputStream.class).newInstance(bis);
+                Security.insertProviderAt(p, Security.getProviders().length + 1);
+                registredProvider.add(p.getClass());
+            } catch (Exception e) {
+                System.out.println("Failed to add nss PKCS11 provider: " + e.getMessage());
+            }
         }
-
-
-        System.out.println("*************");
-        System.out.println("Checking export policy");
-        System.out.println("is restricted: " + KeyStorePlay.isRestricted());
-
-        enumerateProviders();
-        enumerateServices();
-
     }
 
     private static void checkStore(String f, String storeType) {
