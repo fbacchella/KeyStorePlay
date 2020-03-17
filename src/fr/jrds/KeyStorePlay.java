@@ -84,8 +84,11 @@ public class KeyStorePlay {
     @Parameter(names = {"--help", "-h"}, help = true)
     private boolean help;
 
+    @Parameter(names = {"--classpath", "-C"}, description = "Classpath to search for services")
+    String classpath = null;
+
     private static final Set<Class<? extends Provider>> registredProvider = new HashSet<>();
-    
+
     public static void main(String[] args) {
         for (Provider p: Security.getProviders()) {
             registredProvider.add(p.getClass());
@@ -127,7 +130,7 @@ public class KeyStorePlay {
             System.exit(0);
         }
         if (main.autoload) {
-            loadservices();
+            loadservices(main.classpath);
         }
         if (main.bouncycastle) {
             loadbouncycastle();
@@ -184,14 +187,31 @@ public class KeyStorePlay {
         }
     }
 
-    private static void loadservices() {
+    private static void loadservices(String classpath) {
+        ClassLoader loader;
+        if (classpath == null) {
+            loader = KeyStorePlay.class.getClassLoader();
+        } else {
+            String[] paths = classpath.split(File.pathSeparator);
+            URL[] urls = new URL[paths.length];
+            for (int i = 0 ; i < paths.length ; i ++) {
+                try {
+                    urls[i] = Paths.get(paths[i]).toUri().toURL();
+                } catch (MalformedURLException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+            loader = new URLClassLoader(urls);
+            System.out.println(Arrays.toString(urls) + " " + loader);
+        }
         System.out.println("*************");
         System.out.println("Register security provider declared as services");
-        ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class);
+        ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class, loader);
         for(Provider i: sl) {
             if (registredProvider.contains(i.getClass())) {
                 continue;
             }
+            System.out.format("%s: %s\n", i.getClass().getName(), locateJar(i.getClass()));
             System.out.println("    register " + i);
             try {
                 Security.insertProviderAt(i, Security.getProviders().length);
