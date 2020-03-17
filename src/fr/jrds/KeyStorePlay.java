@@ -87,6 +87,9 @@ public class KeyStorePlay {
     private static final Set<Class<? extends Provider>> registredProvider = new HashSet<>();
     
     public static void main(String[] args) {
+        for (Provider p: Security.getProviders()) {
+            registredProvider.add(p.getClass());
+        }
         try {
             for (String s: new String[] {"sun.security.jgss.wrapper.SunNativeProvider", "sun.security.jgss.SunProvider"}) {
                 loadByName(s);
