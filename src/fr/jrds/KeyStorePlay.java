@@ -89,9 +89,8 @@ public class KeyStorePlay {
             for (String s: new String[] {"sun.security.jgss.wrapper.SunNativeProvider", "sun.security.jgss.SunProvider"}) {
                 loadByName(s);
             }
-        } catch (ClassNotFoundException | InstantiationException
-                        | IllegalAccessException ex) {
-          System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + ex.getMessage());
+        } catch (Exception | UnsupportedClassVersionError ex) {
+            System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + ex.getMessage());
         }
 
         try {
