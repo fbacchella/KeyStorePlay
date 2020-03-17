@@ -45,32 +45,6 @@ import com.beust.jcommander.ParameterException;
 
 public class KeyStorePlay {
 
-    // Make the javax.crypto.JceSecurity.isRestricted field visible,
-    private static Method isRestricted = null;
-    static {
-        Class<?> jcJceSecurity;
-        try {
-            jcJceSecurity = Class.forName("javax.crypto.JceSecurity");
-            Method m = jcJceSecurity.getDeclaredMethod("isRestricted");
-            m.setAccessible(true);
-        } catch (ClassNotFoundException e) {
-        } catch (NoSuchMethodException e) {
-        } catch (SecurityException e) {
-        }
-    }
-
-    public static boolean isRestricted() {
-        if(isRestricted != null) {
-            try {
-                return (Boolean) isRestricted.invoke(null);
-            } catch (IllegalAccessException e) {
-            } catch (IllegalArgumentException e) {
-            } catch (InvocationTargetException e) {
-            }
-        }
-
-        return false;
-    }
 
     @Parameter(names = {"--providers", "-p"}, description = "List known security provides")
     boolean providers = false;
