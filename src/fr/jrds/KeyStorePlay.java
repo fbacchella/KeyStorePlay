@@ -272,6 +272,7 @@ public class KeyStorePlay {
                                         "javax.net.ssl.trustStoreType",
                                         "jdk.certpath.disabledAlgorithms",
                                         "jdk.jar.disabledAlgorithms",
+                                        "jdk.disabled.namedCurves",
                                         "jdk.security.allowNonCaAnchor",
                                         "jdk.security.useLegacyECC",
                                         "jdk.sasl.disabledMechanisms",
