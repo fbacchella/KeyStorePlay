@@ -13,7 +13,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javac.target>1.7</javac.target>
-        <bouncycastle>1.64</bouncycastle>
+        <bouncycastle>1.67</bouncycastle>
         <mainClass>fr.jrds.KeyStorePlay</mainClass>
         <uberjar.name>keystoreplay</uberjar.name>
     </properties>
