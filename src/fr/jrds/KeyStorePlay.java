@@ -15,13 +15,21 @@ import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.KeyStore.PrivateKeyEntry;
+import java.security.KeyStore.ProtectionParameter;
+import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Permission;
+import java.security.PrivateKey;
 import java.security.Provider;
+import java.security.PublicKey;
 import java.security.Security;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,6 +60,8 @@ import sun.security.pkcs11.SunPKCS11;
 
 public class KeyStorePlay {
 
+    private static final char[] EMPTYPASSWORD = new char[] {};
+    private static final ProtectionParameter EMPTYPROTECTION = new KeyStore.PasswordProtection(EMPTYPASSWORD);
 
     @Parameter(names = {"--providers", "-p"}, description = "List known security provides")
     boolean providers = false;
@@ -371,6 +381,8 @@ public class KeyStorePlay {
             storeType = "DKS";
         } else if (storeFile.endsWith("cacerts")) {
             storeType = "JKS";
+        } else if ("KeychainStore".equals(storeFile) || "Windows-ROOT".equals(storeFile) || "Windows-MY".equals(storeFile)) {
+            storeType = "system";
         }
         if (storeType != null) {
             checkStore(storeFile, storeType);
@@ -421,14 +433,62 @@ public class KeyStorePlay {
 
     private static void checkStore(String f, String storeType) {
         try {
-            KeyStore ks = KeyStore.getInstance(storeType);
-            System.out.println("*** " + f + " ***");
-            ks.load(new FileInputStream(f), "".toCharArray());
+            KeyStore ks;
+            if ("system".equals(storeType)) {
+                ks = KeyStore.getInstance(f);
+                ks.load(null, EMPTYPASSWORD);
+            } else {
+                ks = KeyStore.getInstance(storeType);
+                try {
+                    ks.load(new FileInputStream(f), EMPTYPASSWORD);
+                } catch (IOException ex) {
+                    if (ex.getCause() instanceof UnrecoverableKeyException) {
+                        ks.load(new FileInputStream(f), "changeit".toCharArray());
+                    }
+                }
+            }
+            System.out.format("**** %s%s ****\n",f, "system".equals(storeType) ? "": "#" + storeType);
             System.out.println("type: " + ks.getType());
             System.out.println("provider: " + ks.getProvider().getName());
             System.out.println("count: " + ks.size());
             List<String> aliases = Collections.list(ks.aliases());
-            System.out.println(aliases);
+            for (String entryName: aliases) {
+                try {
+                    KeyStore.Entry e;
+                    try {
+                        e = ks.getEntry(entryName, EMPTYPROTECTION);
+                    } catch (UnsupportedOperationException e1) {
+                        e = ks.getEntry(entryName, null);
+                    }
+                    Certificate cert = null;
+                    String displayName = entryName;
+                    String pkeInformations = "";
+                    String certInformations = "";
+                    Set<?> attributes = Collections.emptySet();
+                    if (e instanceof TrustedCertificateEntry) {
+                        TrustedCertificateEntry tce = (TrustedCertificateEntry)e;
+                        cert = tce.getTrustedCertificate();
+                        attributes = tce.getAttributes();
+                    } else if (e instanceof PrivateKeyEntry) {
+                        PrivateKeyEntry pke = (PrivateKeyEntry)e;
+                        cert = pke.getCertificate();
+                        attributes = pke.getAttributes();
+                        PrivateKey priv = pke.getPrivateKey();
+                        pkeInformations = String.format(" [%s/%s]", priv.getFormat(), priv.getAlgorithm());
+                    }
+                    if (cert != null) {
+                        PublicKey pub =  cert.getPublicKey();
+                        certInformations = String.format(" %s/%s", cert.getType(), pub.getAlgorithm());
+                    }
+                    if (e != null && cert instanceof X509Certificate) {
+                        X509Certificate x509 = (X509Certificate) cert;
+                        displayName = String.format("%s[%s]", entryName, x509.getSubjectX500Principal());
+                    }
+                    System.out.format("  %s = %s%s\n", displayName, certInformations, pkeInformations);
+                } catch (UnrecoverableKeyException e) {
+                    System.out.format("  %s password protected\n", entryName);
+                }
+            }
         } catch (Exception e) {
             System.out.println("Exception: " + e.getClass() + ": " + e.getMessage());
         }
