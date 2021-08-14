@@ -106,7 +106,7 @@ public class KeyStorePlay {
             System.out.println("Missing some Sun's providers, not a Oracle JDK ? " + ex.getMessage());
         }
         tryPkcs11();
-        
+
         try {
             @SuppressWarnings("unchecked")
             Class<Provider> clazz = (Class<Provider>) Class.forName("org.apache.wss4j.common.crypto.ThreadLocalSecurityProvider");
@@ -632,7 +632,7 @@ public class KeyStorePlay {
             }
         }
     }
-    
+
     private static void loadByName(String providerClassName) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
         @SuppressWarnings("unchecked")
         Class<Provider> clazz = (Class<Provider>) Class.forName(providerClassName);
