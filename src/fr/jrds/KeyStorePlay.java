@@ -399,18 +399,23 @@ public class KeyStorePlay {
 
     @SuppressWarnings("restriction")
     public static void tryPkcs11() {
-        if (! registredProvider.contains(SunPKCS11.class)) {
-            StringBuilder buffer = new StringBuilder();
-            buffer.append("name=NSS\n");
-            buffer.append("nssDbMode=noDb\n");
-            // Needs to use introspection because of API change
-            try (ByteArrayInputStream bis = new ByteArrayInputStream(buffer.toString().getBytes())) {
-                SunPKCS11 p = SunPKCS11.class.getConstructor(ByteArrayInputStream.class).newInstance(bis);
-                Security.insertProviderAt(p, Security.getProviders().length + 1);
-                registredProvider.add(p.getClass());
-            } catch (Exception e) {
-                System.out.println("Failed to add nss PKCS11 provider: " + e.getMessage());
+        try {
+            Class<?> clazz = registredProvider.getClass().getClassLoader().loadClass("sun.security.pkcs11.SunPKCS11");
+            if (! registredProvider.contains(clazz)) {
+                StringBuilder buffer = new StringBuilder();
+                buffer.append("name=NSS\n");
+                buffer.append("nssDbMode=noDb\n");
+                // Needs to use introspection because of API change
+                try (ByteArrayInputStream bis = new ByteArrayInputStream(buffer.toString().getBytes())) {
+                    SunPKCS11 p = SunPKCS11.class.getConstructor(ByteArrayInputStream.class).newInstance(bis);
+                    Security.insertProviderAt(p, Security.getProviders().length + 1);
+                    registredProvider.add(p.getClass());
+                } catch (Exception e) {
+                    System.out.println("Failed to add nss PKCS11 provider: " + e.getMessage());
+                }
             }
+        } catch (ClassNotFoundException | NullPointerException e) {
+            System.out.println("sun.security.pkcs11.SunPKCS11 is not reacheable");
         }
     }
 
