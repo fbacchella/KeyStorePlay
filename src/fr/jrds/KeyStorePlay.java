@@ -342,6 +342,10 @@ public class KeyStorePlay {
                     System.out.println("      " + getProtocols(defaultparams));
                     System.out.println("    Supported protocols:");
                     System.out.println("      " + getProtocols(supportedparams));
+                    System.out.println("    Default application protocols:");
+                    System.out.println("      " + getApplicationProtocols(defaultparams));
+                    System.out.println("    Supported application protocols:");
+                    System.out.println("      " + getApplicationProtocols(supportedparams));
                     System.out.println("    Defaults cipher suites:");
                     for(String c: defaultparams.getCipherSuites()) {
                         System.out.println("      " + c);
@@ -350,7 +354,7 @@ public class KeyStorePlay {
                     for(String c: supportedparams.getCipherSuites()) {
                         System.out.println("      " + c);
                     }
-                } catch (NoSuchAlgorithmException | NoSuchProviderException | IllegalStateException | KeyManagementException e) {
+                } catch (NoSuchAlgorithmException | NoSuchProviderException | IllegalStateException | KeyManagementException | UnsupportedOperationException e) {
                     e.printStackTrace();
                 }
 
@@ -361,6 +365,21 @@ public class KeyStorePlay {
     private static String getProtocols(SSLParameters params) {
         String protocols = Arrays.toString(params.getProtocols());
         return protocols.substring(1,  protocols.length() -1);
+    }
+
+    private static String getApplicationProtocols(SSLParameters params) {
+        try {
+            Method m = SSLParameters.class.getMethod("getApplicationProtocols");
+            String[] objects = (String[]) m.invoke(params);
+            if (objects != null) {
+                String protocols = Arrays.toString(objects);
+                return protocols.substring(1,  protocols.length() -1);
+            } else {
+                return "";
+            }
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            return "";
+        }
     }
 
     public static void dumpKeyStore(String storeFile) {
