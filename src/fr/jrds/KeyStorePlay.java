@@ -10,7 +10,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.AccessController;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.security.KeyManagementException;
