@@ -538,37 +538,27 @@ public class KeyStorePlay {
         System.out.println("  count: " + ks.size());
     }
 
-    private static final Comparator<Entry<?, ?>> propsComparator = new Comparator<Entry<?, ?>>() {
-        @Override
-        public int compare(Entry<?, ?> o1,
-                           Entry<?, ?> o2) {
-            int c1 = o1.toString().compareTo(o2.toString());
-            if (c1 == 0) {
-                return o2.toString().compareTo(o2.toString());
-            } else {
-                return c1;
-            }
+    private static final Comparator<Entry<?, ?>> propsComparator = (o1, o2) -> {
+        int c1 = o1.toString().compareTo(o2.toString());
+        if (c1 == 0) {
+            return o2.toString().compareTo(o2.toString());
+        } else {
+            return c1;
         }
     };
-
     private static final Pattern PROPINFOPATTERN = Pattern.compile("^([A-Za-z0-9]+)\\.([#:_\\(\\)/A-Za-z0-9\\.-]+)(?: (.+))?$");
     private static final Pattern ALIASEPATTERN = Pattern.compile("^Alg\\.Alias\\.([A-Za-z0-9]+)\\.(.+)$");
     private static void enumerateProviders() {
         System.out.println("*************");
         System.out.println("Providers enumeration");
-        Set<Provider> providers = new TreeSet<>(new Comparator<>() {
-            @Override
-            public int compare(Provider arg0, Provider arg1) {
-                return arg0.getName().compareTo(arg1.getName());
-            }
-        });
+        Set<Provider> providers = new TreeSet<>((arg0, arg1) -> arg0.getName().compareTo(arg1.getName()));
         providers.addAll(Arrays.asList(Security.getProviders()));
         System.out.println(Arrays.asList(Security.getProviders()));
         for(Provider p: providers) {
             Map<String, Set<String>> services = new TreeMap<>();
             System.out.println("**** " + p.getName());
             System.out.println("    " + p.getInfo());
-            System.out.println("    " + p.getVersionStr());
+            System.out.println("    " + p.getVersion());
             System.out.println("    location: " + p.getClass().getName() + "@" + locateJar(p.getClass()));
             for(Provider.Service s: p.getServices()) {
                 if (! services.containsKey(s.getType())) {

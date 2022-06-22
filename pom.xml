@@ -12,7 +12,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javac.target>1.7</javac.target>
+        <maven.compiler.release>8</maven.compiler.release>
         <bouncycastle.version>1.70</bouncycastle.version>
         <surefire.version>3.0.0-M7</surefire.version>
         <mainClass>fr.jrds.KeyStorePlay</mainClass>
@@ -143,8 +143,6 @@
                     <version>3.3.2</version>
                     <configuration>
                         <quiet />
-                        <bootclasspath>${bootclasspath}</bootclasspath>
-                        <source>${maven.compiler.source}</source>
                         <detectJavaApiLink>true</detectJavaApiLink>
                         <detectLinks>false</detectLinks>
                         <keywords>true</keywords>
@@ -196,11 +194,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <compilerVersion>${javac.target}</compilerVersion>
-                    <source>${javac.target}</source>
-                    <target>${javac.target}</target>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -239,9 +232,7 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
                     <quiet/>
-                    <bootclasspath>${bootclasspath}</bootclasspath>
-                    <source>${maven.compiler.source}</source>
-                    <detectJavaApiLink>true</detectJavaApiLink>
+                     <detectJavaApiLink>true</detectJavaApiLink>
                     <detectLinks>false</detectLinks>
                     <links>
                     </links>
