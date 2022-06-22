@@ -225,7 +225,7 @@ public class KeyStorePlay {
             if (registredProvider.contains(i.getClass())) {
                 continue;
             }
-            System.out.format("%s: %s\n", i.getClass().getName(), locateJar(i.getClass()));
+            System.out.format("%s: %s%n", i.getClass().getName(), locateJar(i.getClass()));
             System.out.println("    register " + i);
             try {
                 Security.insertProviderAt(i, Security.getProviders().length);
@@ -301,7 +301,7 @@ public class KeyStorePlay {
         }) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
-                System.out.format("%s=%s\n", prop, value);
+                System.out.format("%s=%s%n", prop, value);
             }
         }
     }
@@ -319,7 +319,7 @@ public class KeyStorePlay {
                     contexts.add(s.getAlgorithm());
                 }
             }
-            if (contexts.size() > 0) {
+            if (!contexts.isEmpty()) {
                 providers.put(p.getName(), contexts);
             }
         }
@@ -420,7 +420,7 @@ public class KeyStorePlay {
             SSLSocketFactory factory =  (SSLSocketFactory) SSLSocketFactory.getDefault();
             try (SSLSocket socket =  (SSLSocket) factory.createSocket(host, port)) {
                 SSLSession session = socket.getSession();
-                System.out.printf("connect to %s as '%s', using %s\n", cnxString, session.getPeerPrincipal(), session.getCipherSuite());
+                System.out.printf("connect to %s as '%s', using %s%n", cnxString, session.getPeerPrincipal(), session.getCipherSuite());
             }
         } catch (NumberFormatException | IOException e) {
             System.out.println("connection failed: " +  e.getMessage());
@@ -465,7 +465,7 @@ public class KeyStorePlay {
                     }
                 }
             }
-            System.out.format("**** %s%s ****\n",f, "system".equals(storeType) ? "": "#" + storeType);
+            System.out.format("**** %s%s ****%n",f, "system".equals(storeType) ? "": "#" + storeType);
             System.out.println("type: " + ks.getType());
             System.out.println("provider: " + ks.getProvider().getName());
             System.out.println("count: " + ks.size());
@@ -482,15 +482,12 @@ public class KeyStorePlay {
                     String displayName = entryName;
                     String pkeInformations = "";
                     String certInformations = "";
-                    Set<?> attributes = Collections.emptySet();
                     if (e instanceof TrustedCertificateEntry) {
                         TrustedCertificateEntry tce = (TrustedCertificateEntry)e;
                         cert = tce.getTrustedCertificate();
-                        attributes = tce.getAttributes();
                     } else if (e instanceof PrivateKeyEntry) {
                         PrivateKeyEntry pke = (PrivateKeyEntry)e;
                         cert = pke.getCertificate();
-                        attributes = pke.getAttributes();
                         PrivateKey priv = pke.getPrivateKey();
                         pkeInformations = String.format(" [%s/%s]", priv.getFormat(), priv.getAlgorithm());
                     }
@@ -502,9 +499,9 @@ public class KeyStorePlay {
                         X509Certificate x509 = (X509Certificate) cert;
                         displayName = String.format("%s[%s]", entryName, x509.getSubjectX500Principal());
                     }
-                    System.out.format("  %s = %s%s\n", displayName, certInformations, pkeInformations);
+                    System.out.format("  %s = %s%s%n", displayName, certInformations, pkeInformations);
                 } catch (UnrecoverableKeyException e) {
-                    System.out.format("  %s password protected\n", entryName);
+                    System.out.format("  %s password protected%n", entryName);
                 }
             }
         } catch (Exception e) {
@@ -559,7 +556,7 @@ public class KeyStorePlay {
     private static void enumerateProviders() {
         System.out.println("*************");
         System.out.println("Providers enumeration");
-        Set<Provider> providers = new TreeSet<Provider>(new Comparator<Provider>(){
+        Set<Provider> providers = new TreeSet<>(new Comparator<>() {
             @Override
             public int compare(Provider arg0, Provider arg1) {
                 return arg0.getName().compareTo(arg1.getName());
@@ -568,14 +565,14 @@ public class KeyStorePlay {
         providers.addAll(Arrays.asList(Security.getProviders()));
         System.out.println(Arrays.asList(Security.getProviders()));
         for(Provider p: providers) {
-            Map<String, Set<String>> services = new TreeMap<String, Set<String>>();
+            Map<String, Set<String>> services = new TreeMap<>();
             System.out.println("**** " + p.getName());
             System.out.println("    " + p.getInfo());
-            System.out.println("    " + p.getVersion());
+            System.out.println("    " + p.getVersionStr());
             System.out.println("    location: " + p.getClass().getName() + "@" + locateJar(p.getClass()));
             for(Provider.Service s: p.getServices()) {
                 if (! services.containsKey(s.getType())) {
-                    services.put(s.getType(), new TreeSet<String>());
+                    services.put(s.getType(), new TreeSet<>());
                 }
                 services.get(s.getType()).add(s.getAlgorithm());
             }
@@ -583,10 +580,10 @@ public class KeyStorePlay {
             Map<String, Map<String, Map<String, String>>> propsMap = new HashMap<>();
             Map<String, Map<String, Set<String>>> aliases = new HashMap<>();
             for (String service: services.keySet()) {
-                propsMap.put(service, new HashMap<String, Map<String, String>>());
-                aliases.put(service, new HashMap<String, Set<String>>());
+                propsMap.put(service, new HashMap<>());
+                aliases.put(service, new HashMap<>());
             }
-            if (properties.size() > 0) {
+            if (!properties.isEmpty()) {
                 Collections.sort(properties, propsComparator);
                 for (Entry<Object, Object> e: properties) {
                     String propPath = e.getKey().toString();
@@ -596,10 +593,10 @@ public class KeyStorePlay {
                             String propService = ma.group(1);
                             String propAlgorithm = ma.group(2);
                             if (! aliases.containsKey(propService)) {
-                                aliases.put(propService, new HashMap<String, Set<String>>());
+                                aliases.put(propService, new HashMap<>());
                             }
                             if (! aliases.get(propService).containsKey(e.getValue().toString())) {
-                                aliases.get(propService).put(e.getValue().toString(), new HashSet<String>());
+                                aliases.get(propService).put(e.getValue().toString(), new HashSet<>());
                             }
                             aliases.get(propService).get(e.getValue().toString()).add(propAlgorithm);
                         } else {
@@ -612,15 +609,15 @@ public class KeyStorePlay {
                                     propName = "Implementing class";
                                 }
                                 if (! propsMap.containsKey(propService)) {
-                                    propsMap.put(propService, new HashMap<String, Map<String, String>>());
+                                    propsMap.put(propService, new HashMap<>());
                                 }
                                 Map<String, Map<String, String>> algoProps = propsMap.get(propService);
                                 if (! algoProps.containsKey(propAlgorithm)) {
-                                    algoProps.put(propAlgorithm, new HashMap<String, String>());
+                                    algoProps.put(propAlgorithm, new HashMap<>());
                                 }
                                 algoProps.get(propAlgorithm).put(propName, e.getValue().toString());
                             } else {
-                                System.out.format("not matching for %s\n", propPath);
+                                System.out.format("not matching for %s%n", propPath);
                             }
                         }
                     } catch (Exception ex) {
@@ -631,10 +628,10 @@ public class KeyStorePlay {
             propsMap.remove("Provider");
             System.out.println();
             for (Map.Entry<String, Set<String>> e: services.entrySet()) {
-                System.out.format("    %s:\n", e.getKey());
+                System.out.format("    %s:%n", e.getKey());
                 Map<String, Map<String, String>> algsProps = propsMap.remove(e.getKey());
                 List<Entry<String, Map<String, String>>> algos = new ArrayList<>(algsProps.entrySet());
-                Collections.sort(algos, propsComparator);
+                algos.sort(propsComparator);
                 Map<String, Set<String>> serviceAliases = aliases.get(e.getKey());
                 for (Entry<String, Map<String, String>> a: algos) {
                     String algo = a.getKey();
@@ -647,32 +644,32 @@ public class KeyStorePlay {
                     } else {
                         algoAliases = Collections.emptySet();
                     }
-                    System.out.format("        %s%s\n",
+                    System.out.format("        %s%s%n",
                                       algo,
                                       algoProps.isEmpty() ? "" : ":"
                                     );
                     if (! algoAliases.isEmpty()) {
-                        System.out.format("            Aliases: %s\n", algoAliases);
+                        System.out.format("            Aliases: %s%n", algoAliases);
                     }
                     for (Entry<String, String> prop: algoProps.entrySet()) {
-                        System.out.format("            %s: %s\n", prop.getKey(), prop.getValue());
+                        System.out.format("            %s: %s%n", prop.getKey(), prop.getValue());
                     }
                 }
             }
             if (propsMap.containsKey("Alg.Alias")) {
-                System.out.format("\n    Aliases\n");
+                System.out.format("%n    Aliases%n");
                 for (Map.Entry<String, Map<String, String>> a: propsMap.remove("Alg.Alias").entrySet()) {
-                    System.out.format("        %s -> %s\n", a.getKey(), a.getValue().get("Implementing class"));
+                    System.out.format("        %s -> %s%n", a.getKey(), a.getValue().get("Implementing class"));
 
                 }
             }
             if (! propsMap.isEmpty()) {
-                System.out.format("    %s:\n", propsMap);
+                System.out.format("    %s:%n", propsMap);
             }
         }
     }
 
-    static private String locateJar(Class<?> c ) {
+    private static String locateJar(Class<?> c ) {
         String retValue="Not found";
         String cName = c.getName();
         int lastDot = cName.lastIndexOf('.');
@@ -691,14 +688,14 @@ public class KeyStorePlay {
     private static void enumerateServices() {
         System.out.println("*************");
         System.out.println("Services enumeration");
-        Map<String, Map<String, List<String>>> services = new TreeMap<String, Map<String, List<String>>>();
+        Map<String, Map<String, List<String>>> services = new TreeMap<>();
         for(Provider p: Security.getProviders()) {
             for(Provider.Service s: p.getServices()) {
                 if (! services.containsKey(s.getType())) {
-                    services.put(s.getType(), new TreeMap<String, List<String>>());
+                    services.put(s.getType(), new TreeMap<>());
                 }
                 if( ! services.get(s.getType()).containsKey(s.getAlgorithm()) ) {
-                    services.get(s.getType()).put(s.getAlgorithm(), new ArrayList<String>());
+                    services.get(s.getType()).put(s.getAlgorithm(), new ArrayList<>());
                 }
                 services.get(s.getType()).get(s.getAlgorithm()).add(s.getProvider().getName());
             }
@@ -711,11 +708,13 @@ public class KeyStorePlay {
         }
     }
 
-    private static void loadByName(String providerClassName) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    private static void loadByName(String providerClassName)
+            throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException,
+                           InvocationTargetException {
         @SuppressWarnings("unchecked")
         Class<Provider> clazz = (Class<Provider>) Class.forName(providerClassName);
         if (! registredProvider.contains(clazz)) {
-            Security.insertProviderAt(clazz.newInstance(), Security.getProviders().length);
+            Security.insertProviderAt(clazz.getConstructor().newInstance(), Security.getProviders().length);
             registredProvider.add(clazz);
         }
     }
