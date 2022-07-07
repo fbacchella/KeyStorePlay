@@ -66,6 +66,9 @@ public class KeyStorePlay {
     @Parameter(names = {"--services", "-s"}, description = "List known security services")
     boolean services = false;
 
+    @Parameter(names = {"--servicecheck", "-S"}, description = "Check for a service")
+    String servicecheck = null;
+
     @Parameter(names = {"--connect", "-c"}, description = "Try a ssl/tls connection")
     String destination = null;
 
@@ -157,7 +160,7 @@ public class KeyStorePlay {
             enumerateProviders();
         }
         if (main.services) {
-            enumerateServices();
+            enumerateServices(main.servicecheck);
         }
         if (main.destination != null) {
             connect(main.destination);
@@ -673,12 +676,15 @@ public class KeyStorePlay {
     }
 
 
-    private static void enumerateServices() {
+    private static void enumerateServices(String servicecheck) {
         System.out.println("*************");
         System.out.println("Services enumeration");
         Map<String, Map<String, List<String>>> services = new TreeMap<>();
         for(Provider p: Security.getProviders()) {
             for(Provider.Service s: p.getServices()) {
+                if (servicecheck != null && ! servicecheck.equals(s.getType())) {
+                    continue;
+                }
                 if (! services.containsKey(s.getType())) {
                     services.put(s.getType(), new TreeMap<>());
                 }
