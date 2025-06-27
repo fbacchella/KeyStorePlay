@@ -144,20 +144,21 @@ public class KeyStorePlay {
             jcom.usage();
             System.exit(0);
         }
+        ClassLoader loader = resolveClassLoader(main.classpath);
         if (main.autoload) {
-            loadservices(main.classpath);
+            loadservices(loader);
         }
         if (main.bouncycastle) {
-            loadbouncycastle();
+            loadbouncycastle(loader);
         }
         if (main.wildflyelytron) {
-            loadwildflyelytron();
+            loadwildflyelytron(loader);
         }
         if (main.conscrypt) {
-            loadconscrypt();
+            loadconscrypt(loader);
         }
         if (main.providers) {
-            enumerateProviders();
+            enumerateProviders(main.providercheck);
         }
         if (main.services) {
             enumerateServices(main.servicecheck);
@@ -202,10 +203,10 @@ public class KeyStorePlay {
         }
     }
 
-    private static void loadservices(String classpath) {
+    private static ClassLoader resolveClassLoader(String classpath) {
         ClassLoader loader;
         if (classpath == null) {
-            loader = KeyStorePlay.class.getClassLoader();
+            return KeyStorePlay.class.getClassLoader();
         } else {
             String[] paths = classpath.split(File.pathSeparator);
             URL[] urls = new URL[paths.length];
@@ -217,8 +218,11 @@ public class KeyStorePlay {
                 }
             }
             loader = new URLClassLoader(urls);
-            System.out.println(Arrays.toString(urls) + " " + loader);
+            return loader;
         }
+    }
+
+    private static void loadservices(ClassLoader loader) {
         System.out.println("*************");
         System.out.println("Register security provider declared as services");
         ServiceLoader<java.security.Provider> sl =  ServiceLoader.load(Provider.class, loader);
@@ -236,29 +240,29 @@ public class KeyStorePlay {
         }
     }
 
-    private static void loadbouncycastle() {
+    public static void loadbouncycastle(ClassLoader cl) {
         try {
-            loadByName("org.bouncycastle.jce.provider.BouncyCastleProvider");
-            loadByName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider");
-            loadByName("org.bouncycastle.jsse.provider.BouncyCastleJsseProvider");
+            loadByName("org.bouncycastle.jce.provider.BouncyCastleProvider", cl);
+            loadByName("org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider", cl);
+            loadByName("org.bouncycastle.jsse.provider.BouncyCastleJsseProvider", cl);
             System.out.println("Loaded BouncyCastle");
         } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add BouncyCastle providers: " + e.getMessage());
         }
     }
 
-    private static void loadwildflyelytron() {
+    private static void loadwildflyelytron(ClassLoader cl) {
         try {
-            loadByName("org.wildfly.security.WildFlyElytronProvider");
+            loadByName("org.wildfly.security.WildFlyElytronProvider", cl);
             System.out.println("Loaded WildFly Elytron");
         } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add WildFly Elytron provider: " + e.getMessage());
         }
     }
 
-    private static void loadconscrypt() {
+    private static void loadconscrypt(ClassLoader cl) {
         try {
-            loadByName("org.conscrypt.OpenSSLProvider");
+            loadByName("org.conscrypt.OpenSSLProvider", cl);
             System.out.println("Loaded Google's conscrypt");
         } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add Google's conscrypt provider: " + e.getMessage());
@@ -727,11 +731,12 @@ public class KeyStorePlay {
         }
     }
 
-    private static void loadByName(String providerClassName)
+    private static void loadByName(String providerClassName, ClassLoader loader)
             throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException,
                            InvocationTargetException {
+
         @SuppressWarnings("unchecked")
-        Class<Provider> clazz = (Class<Provider>) Class.forName(providerClassName);
+        Class<Provider> clazz = (Class<Provider>) loader.loadClass(providerClassName);
         if (! registredProvider.contains(clazz)) {
             Security.insertProviderAt(clazz.getConstructor().newInstance(), Security.getProviders().length);
             registredProvider.add(clazz);
