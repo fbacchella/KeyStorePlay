@@ -267,11 +267,13 @@ public class KeyStorePlay {
 
     private static void secprops() {
         System.out.println("*************");
-        System.out.println("Current know security properties");
-        for (String prop: new String[] {"java.security",
+        System.out.println("Current known security properties");
+        for (String prop: new String[] {
                                         "cert.provider.x509v",
-                                        "crypto.policy", 
+                                        "crypto.policy",
+                                        "http.auth.digest.disabledAlgorithms",
                                         "https.cipherSuites",
+                                        "java.security",
                                         "java.security.egd",
                                         "java.protocol.handler.pkgs",
                                         "javax.net.ssl.keyStore",
@@ -281,25 +283,48 @@ public class KeyStorePlay {
                                         "javax.net.ssl.trustStore",
                                         "javax.net.ssl.trustStoreType",
                                         "jdk.certpath.disabledAlgorithms",
+                                        "jdk.io.permissionsUseCanonicalPath",
                                         "jdk.jar.disabledAlgorithms",
                                         "jdk.disabled.namedCurves",
                                         "jdk.security.allowNonCaAnchor",
+                                        "jdk.security.caDistrustPolicies",
+                                        "jdk.security.legacyAlgorithms",
                                         "jdk.security.useLegacyECC",
                                         "jdk.sasl.disabledMechanisms",
-                                        "jdk.tls.disabledAlgorithms", 
+                                        "jdk.tls.alpnCharset",
+                                        "jdk.tls.disabledAlgorithms",
                                         "jdk.tls.ephemeralDHKeySize",
                                         "jdk.tls.legacyAlgorithms", 
                                         "jdk.tls.keyLimits",
                                         "jdk.tls.namedGroups",
+                                        "jdk.xml.dsig.secureValidationPolicy",
                                         "jsse.enableSNIExtension",
                                         "jceks.key.serialFilter",
+                                        "keystore.type",
+                                        "keystore.type.compat",
+                                        "krb5.kdc.bad.policy",
+                                        "login.configuration.provider",
+                                        "networkaddress.cache.negative.ttl",
+                                        "package.access",
+                                        "package.definition",
+                                        "policy.allowSystemProperty",
+                                        "policy.expandProperties",
+                                        "policy.ignoreIdentityScope",
+                                        "policy.provider",
+                                        "policy.url.1",
+                                        "policy.url.2",
+                                        "securerandom.drbg.config",
+                                        "securerandom.source",
                                         "securerandom.strongAlgorithms",
                                         "securerandom.source",
-                                        "sun.security.ssl.allowLegacyHelloMessages",
+                                        "security.overridePropertiesFile",
                                         "ssl.KeyManagerFactory.algorithm",
                                         "ssl.TrustManagerFactory.algorithm",
                                         "ssl.SocketFactory.provider",
-        }) {
+                                        "sun.security.krb5.disableReferrals",
+                                        "sun.security.krb5.maxReferrals",
+                                        "sun.security.ssl.allowLegacyHelloMessages",
+         }) {
             String value = java.security.Security.getProperty(prop);
             if (value != null) {
                 System.out.format("%s=%s%n", prop, value);
