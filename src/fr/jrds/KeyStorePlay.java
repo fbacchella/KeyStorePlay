@@ -90,6 +90,9 @@ public class KeyStorePlay {
     @Parameter(names = {"--conscrypt", "-g"}, description = "Add Google's conscrypt security provider")
     boolean conscrypt = false;
 
+    @Parameter(names = {"--kona"}, description = "Add Tencent's kona security provider")
+    boolean kona = false;
+
     @Parameter(names = {"--autoload", "-a"}, description = "Autoload security services defined in MANIFEST.mf")
     boolean autoload = false;
 
@@ -156,6 +159,9 @@ public class KeyStorePlay {
         }
         if (main.conscrypt) {
             loadconscrypt(loader);
+        }
+        if (main.kona) {
+            loadkona(loader);
         }
         if (main.providers) {
             enumerateProviders(main.providercheck);
@@ -266,6 +272,19 @@ public class KeyStorePlay {
             System.out.println("Loaded Google's conscrypt");
         } catch (Exception | UnsupportedClassVersionError e) {
             System.out.println("Failed to add Google's conscrypt provider: " + e.getMessage());
+        }
+    }
+
+    private static void loadkona(ClassLoader cl) {
+        try {
+            loadByName("com.tencent.kona.KonaProvider", cl);
+            loadByName("com.tencent.kona.pkix.KonaPKIXProvider", cl);
+            loadByName("com.tencent.kona.crypto.KonaCryptoProvider", cl);
+            loadByName("com.tencent.kona.ssl.KonaSSLProvider", cl);
+            System.out.println("Loaded Tencent's Kona");
+        } catch (Exception | UnsupportedClassVersionError e) {
+            System.out.println("Failed to add Tencent's Kona provider: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
